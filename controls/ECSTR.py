@@ -1,18 +1,13 @@
-import numpy as np
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../../ipsim")) 
 
 from ipsim import *
-from ipsim.models import *
-
-from scipy.integrate import solve_ivp
+from ipsim.models import ECSTR_A0_Node, ECSTR_A0
 
 import numpy as np
-import random as rnd
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
-from copy import deepcopy
 
 #===============================================================================
 class PID:
@@ -94,12 +89,12 @@ if __name__ == "__main__":
                                                    , ("SensorT", "T") ])
     manipulator = ProcessModel.make_common_manipulator([("Coolant","T"), ])
 
-    #init_state = {"cA":0.9268781731904586, "cB":0, "T":317.7349003254033}
+    solver = lambda f, ts, x, u, p: solve_ivp(f, ts, x, args = (u, p, ), method='LSODA')
     init_state = {"cA":0.5, "cB":0, "T":350}
-    scstr = CSTRSimple(  solver = solve_ivp
-                       , observer = observer
-                       , manipulator = manipulator
-                       , init_state = init_state)
+    scstr = ECSTR_A0( solver = solver
+                    , observer = observer
+                    , manipulator = manipulator
+                    , init_state = init_state)
     
     pid = PID(setpoint=385, Kp=0.03125, Ki=2.842170943040401e-16, Kd = 0.0075, dt=scstr.dt(), min_value=298, max_value=395)
 
