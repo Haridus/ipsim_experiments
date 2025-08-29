@@ -1,11 +1,9 @@
+import os
 import yaml
 
 #=====================================================================
 class EnvFactory:
-    constructors = { "SimpleCSTR": create_env_SCSTR
-                   , "ReactorEnv": create_env_ReactorEnv
-                   }
-    
+    constructors = { }    
     @staticmethod
     def create(config):
         env_name = config['model_name']
@@ -14,9 +12,7 @@ class EnvFactory:
         raise Exception("Unknown env")
 
 class ControlFactory:
-    constructors = { "SimpleCSTR": create_pid_conrol_SCSTR
-                   , "ReactorEnv": create_pid_control_ReactorEnv
-                   }
+    constructors = { }
 
     @staticmethod
     def create(config):

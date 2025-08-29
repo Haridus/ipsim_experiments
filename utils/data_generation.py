@@ -23,8 +23,8 @@ def save_dataset(dataset, config):
     num_of_initial_state = config.get("num_of_initial_state",1000)
     mkdir(dataset_location)
     dataset_loc = os.path.join(dataset_location, f'{num_of_initial_state}_normalize={normalize}.pkl')
-    print("terminals", np.where(dataset["terminals"] == True))
-    print("timeouts", np.where(dataset["timeouts"] == True))
+    #print("terminals", np.where(dataset["terminals"] == True))
+    #print("timeouts", np.where(dataset["timeouts"] == True))
     with open(dataset_loc, 'wb') as fp:
         pickle.dump(dataset, fp)
     print(f"saved dataset {dataset_loc}")

@@ -2,14 +2,14 @@ import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../../ipsim")) 
 
-from ipsim import *
+from mgym.env_wrapper import *
 
-from ..gym.env_wrapper import *
+from ipsim import *
 
 from scipy.integrate import solve_ivp
 
 #================================================================================
-def create_env_SCSTR(config):
+def create_env_ECSTR_S0(config):
     MAX_OBSERVATIONS = [1.0, 100.0, 1.0]  
     MIN_OBSERVATIONS = [1e-08, 1e-08, 1e-08]
     MAX_ACTIONS = [35.0, 0.2] 
@@ -44,7 +44,7 @@ def create_env_SCSTR(config):
                  , initial_state_deviation_ratio = config.get("initial_state_deviation_ratio", 0.3)
                  , sampling_time = config.get("sampling_time", 0.1)
                  , max_steps = config.get("initial_state_deviation_ratio", 100)
-                 , action_dim = 1
+                 , action_dim = 2
                  , observation_dim = 3
                  , max_observations=MAX_OBSERVATIONS
                  , min_observations=MIN_OBSERVATIONS
@@ -57,8 +57,8 @@ def create_env_SCSTR(config):
                  , process_model_constructor=process_model_creator)
     return env
 
-def create_pid_conrol_SCSTR(config):
-    from ..controls.ECSTR_S0 import PID as ECSTR_S0_PID
+def create_pid_conrol_ECSTR_S0(config):
+    from controls.ECSTR_S0 import PID as ECSTR_S0_PID
     control =  ECSTR_S0_PID(Kis=[100.0, 0.5], steady_state=[0.8778252, 0.659], steady_action=[26.85, 0.1], min_action=[15.0, 0.05], max_action=[35.0, 0.2])
     return control
 
