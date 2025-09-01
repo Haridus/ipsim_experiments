@@ -21,6 +21,16 @@ class ControlFactory:
             return ControlFactory.constructors[env_name](config=config)
         raise Exception("Unknown env")
 
+class AlgorithmsFactory:
+    constructors = { }
+
+    @staticmethod
+    def create(config):
+        alg_name = config['model_name']
+        if alg_name in AlgorithmsFactory.constructors:
+            return AlgorithmsFactory.constructors[alg_name](config=config)
+        raise Exception("Unknown algorithm")
+
 #----------------------------------------------------------------------
 def load_config_yaml(work_dir, model_name):
     config_path = f'{work_dir}/{model_name}.yaml'
