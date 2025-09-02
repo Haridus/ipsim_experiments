@@ -31,6 +31,15 @@ AlgorithmsFactory.constructors["AWAC"] = setup_alg_AWAC
 AlgorithmsFactory.constructors["COMBO"] = setup_alg_COMBO
 AlgorithmsFactory.constructors["MOPO"] = setup_alg_MOPO
 
+#----------------------------------------------------------
+def online_saving_callback(algo, epoch, total_step):
+    mean_env_ret = d3rlpy.metrics.evaluate_on_environment(env, n_trials=10, epsilon=0.0)(algo)
+    global ACTUAL_DIR
+    global ONLINE_PREV_EVALUATE_ON_ENVIRONMENT_SCORER
+    if mean_env_ret < ONLINE_PREV_EVALUATE_ON_ENVIRONMENT_SCORER:
+        ONLINE_PREV_EVALUATE_ON_ENVIRONMENT_SCORER = mean_env_ret
+        algo.save_model(os.path.join(ACTUAL_DIR, 'best_env.pt'))
+
 #================================================================
 def init_seeds(config):
     seeds = None
@@ -45,6 +54,9 @@ def init_seeds(config):
     return seeds
 
 if __name__ == "__main__":
+    global ACTUAL_DIR
+    global ONLINE_PREV_EVALUATE_ON_ENVIRONMENT_SCORER
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-p','--process', type = str, default = 'ECSTR_S0', help = 'Process model name')
     parser.add_argument('-w','--work_dir', type = str, default=os.path.dirname(__file__), help = 'Working directory')
@@ -59,11 +71,6 @@ if __name__ == "__main__":
     config['seed'] = seed
     seeds = init_seeds(config)
 
-    with open(config['training_dataset_loc'], 'rb') as f:
-        training_dataset_pkl = pickle.load(f)
-    with open(config['eval_dataset_loc'], 'rb') as f:
-        eval_dataset_pkl = pickle.load(f)
-    
     seed_data = SeedData(save_path=config['default_loc'], resume_from={
         "seed": None,
         "dataset_name": None,
@@ -76,24 +83,18 @@ if __name__ == "__main__":
         d3rlpy.seed(seed)
         np.random.seed(seed)
         random.seed(seed)
-    
-        dataset = d3rlpy.dataset.MDPDataset(training_dataset_pkl['observations'], training_dataset_pkl['actions'], training_dataset_pkl['rewards'], training_dataset_pkl['terminals'])
-        eval_dataset = d3rlpy.dataset.MDPDataset(eval_dataset_pkl['observations'], eval_dataset_pkl['actions'], eval_dataset_pkl['rewards'], eval_dataset_pkl['terminals'])
-        feeded_episodes = dataset.episodes
-        eval_feeded_episodes = eval_dataset.episodes
-        config['feeded_episodes'] = feeded_episodes
-        config['eval_feeded_episodes'] = eval_feeded_episodes
 
         for algo_name in args.algs:
             current_positions = {
                 "seed": seed,
                 "algo_name": algo_name,
             }
-            config['logdir'] = config['default_loc']+str(seed)
+            config['logdir'] = config['default_loc']+"_ONLINE_"+str(seed)
             acutal_dir = config['logdir']+'/'+algo_name
 
-            prev_evaluate_on_environment_scorer = float('-inf')
-            prev_continuous_action_diff_scorer = float('inf')
+            ONLINE_PREV_EVALUATE_ON_ENVIRONMENT_SCORER = float('-inf')
+            ACTUAL_DIR = acutal_dir
+
             if not seed_data.resume_checker(current_positions):
                 continue
             
@@ -101,19 +102,20 @@ if __name__ == "__main__":
             
             if config['evaluate_on_environment']:
                 scorers['evaluate_on_environment_scorer'] = d3rlpy.metrics.scorer.evaluate_on_environment(env)
-        
-            for epoch, metrics in algo.fitter(feeded_episodes, eval_episodes=eval_feeded_episodes, n_epochs=config['N_EPOCHS'], with_timestamp=False, logdir=config['logdir'], scorers=scorers):
-                wandb.log(metrics)
-                if config['evaluate_on_environment']:
-                    if metrics['evaluate_on_environment_scorer'] > prev_evaluate_on_environment_scorer:
-                        prev_evaluate_on_environment_scorer = metrics['evaluate_on_environment_scorer']
-                        algo.save_model(os.path.join(acutal_dir, 'best_evaluate_on_environment_scorer.pt'))
-                if metrics['continuous_action_diff_scorer'] < prev_continuous_action_diff_scorer:
-                    prev_continuous_action_diff_scorer = metrics['continuous_action_diff_scorer']
-                    algo.save_model(os.path.join(acutal_dir, 'best_continuous_action_diff_scorer.pt'))
+
+            explorer = d3rlpy.online.explorers.LinearDecayEpsilonGreedy(start_epsilon=config['explorer_start_epsilon'], end_epsilon=config['explorer_end_epsilon'], duration=config['explorer_duration'])
+            buffer = d3rlpy.online.buffers.ReplayBuffer(maxlen=config['buffer_maxlen'], env=env)
             
-            if config['evaluate_on_environment']:
-                shutil.copyfile(os.path.join(acutal_dir, 'best_evaluate_on_environment_scorer.pt'), os.path.join(acutal_dir, 'best.pt'))
-            else:
-                shutil.copyfile(os.path.join(acutal_dir, 'best_continuous_action_diff_scorer.pt'), os.path.join(acutal_dir, 'best.pt'))
+            algo.fit_online(  env, buffer
+                            , explorer=explorer
+                            , eval_env=env
+                            , n_steps=config['N_EPOCHS']*config['n_steps_per_epoch']
+                            , n_steps_per_epoch=['n_steps_per_epoch']
+                            , update_interval=['online_update_interval']
+                            , random_steps=['online_random_steps']
+                            , save_interval=['online_save_interval']
+                            , with_timestamp=False
+                            , tensorboard_dir=config['logdir']+'/tensorboard'
+                            , logdir=config['logdir']
+                            , callback=online_saving_callback)
             wandb.wandb_run.finish()
