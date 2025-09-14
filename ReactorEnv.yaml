@@ -1,6 +1,6 @@
 seed: 42
 num_of_seeds: 1
-env_name: 'reactorenv'
+process_name: 'ReactorEnv'
 model_name: 'ppo'
 normalize: False
 dense_reward: True
@@ -24,12 +24,15 @@ scaler: 'min_max' # None, 'pixel', 'min_max', 'standard'
 action_scaler: 'min_max' # None, 'min_max'
 reward_scaler: 'min_max' # None, 'min_max', 'standard'
 evaluate_on_environment: True
-default_loc: "d3rlpy_logs/"
+logs_location: "d3rlpy_logs/"
 plt_dir: "plt_results"
-dataset_location: datasets # for dataset generation
-training_dataset_loc: 'datasets/pid_step_50_normalize=False.pkl'
-eval_dataset_loc: 'datasets/pid_step_10_normalize=False.pkl'
-test_initial_states: 'datasets/initial_states_step_10.npy'
+dataset_location: datasets 
+training_dataset: 'train_1000_normalize=False.pkl'
+eval_dataset: 'test_1000_normalize=False.pkl'
+test_initial_states: ''
+training_num_of_initial_state: 1000
+eval_num_of_initial_state: 1000
+
 
 # env specific configs
 reward_on_steady: True

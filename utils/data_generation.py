@@ -4,9 +4,8 @@ from tqdm import tqdm
 import numpy as np
 
 #===========================================================================
-def generate_dataset(env, control, config):
+def generate_dataset(env, control, config, num_of_initial_state):
     normalize = config.get("normalize",False)
-    num_of_initial_state = config.get("num_of_initial_state",1000)
     initial_states = []
     for _ in tqdm(range(num_of_initial_state)):
         init = env.sample_initial_state()
@@ -16,15 +15,18 @@ def generate_dataset(env, control, config):
 
     return dataset
 
-def save_dataset(dataset, config):
-    env_name = config["model_name"]
+def form_dataset_location_path(config):
+    env_name = config["process_name"]
+    dataset_location = config.get("dataset_location",f"datasets")
+    dataset_path = os.path.join(os.path.join(".", f"{env_name}"),f"{dataset_location}")
+    return dataset_path
+
+def save_dataset(dataset, config, dataset_name):
     normalize = config.get("normalize",False)
-    dataset_location = config.get("dataset_location",f"./{env_name}")
-    num_of_initial_state = config.get("num_of_initial_state",1000)
-    mkdir(dataset_location)
-    dataset_loc = os.path.join(dataset_location, f'{num_of_initial_state}_normalize={normalize}.pkl')
-    #print("terminals", np.where(dataset["terminals"] == True))
-    #print("timeouts", np.where(dataset["timeouts"] == True))
+    dataset_path = form_dataset_location_path(config)
+    mkdir(dataset_path)
+    
+    dataset_loc = os.path.join(dataset_path, f'{dataset_name}_normalize={normalize}.pkl')
     with open(dataset_loc, 'wb') as fp:
         pickle.dump(dataset, fp)
     print(f"saved dataset {dataset_loc}")

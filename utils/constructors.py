@@ -37,7 +37,7 @@ def create_env_ECSTR_S0(config):
         process =  ECSTR_S0(solver=solver, observer=npobserver, manipulator=_manipulator, dt=0.1, init_state=init_state)
         return process
            
-    env = EnvGym(  normalize=config.get("normalize", True)
+    env = EnvGym(  normalize=config.get("normalize", False)
                  , dense_reward=config.get("dense_reward", True)
                  , debug_mode= config.get("debug_mode", False)
                  , compute_diffs_on_reward = config.get("compute_diffs_on_reward", False)

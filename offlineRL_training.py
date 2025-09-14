@@ -1,5 +1,6 @@
 #================================================================
 from utils.utils import *
+from utils.data_generation import *
 from utils.constructors import *
 from mgym.algorithms import *
 
@@ -46,31 +47,36 @@ def init_seeds(config):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p','--process', type = str, default = 'ECSTR_S0', help = 'Process model name')
+    parser.add_argument('-p','--process', type = str, default = 'ReactorEnv', help = 'Process model name')
     parser.add_argument('-w','--work_dir', type = str, default=os.path.dirname(__file__), help = 'Working directory')
-    parser.add_argument('-s','--seed', type = int, default=None, help = 'Seed value') 
+    parser.add_argument('-s','--seed', type = int, default=42, help = 'Seed value') 
     parser.add_argument('-a','--algs', nargs='+', default=['BC', 'CQL', 'PLAS', 'PLASWithPerturbation', 'BEAR', 'SAC', 'BCQ', 'CRR', 'AWAC', 'DDPG', 'TD3', 'COMBO', 'MOPO'], help = 'list of used algorithms')    
     args = parser.parse_args()
-    
+    #['BC', 'CQL', 'PLAS', 'PLASWithPerturbation', 'BEAR', 'SAC', 'BCQ', 'CRR', 'AWAC', 'DDPG', 'TD3', 'COMBO', 'MOPO']
+
     os. chdir(args.work_dir)
     project_title = args.process
     config = load_config_yaml(args.work_dir, args.process)
+
     seed = config.get('seed', args.seed)
     config['seed'] = seed
     seeds = init_seeds(config)
+    env = EnvFactory.create(config=config)
 
-    with open(config['training_dataset_loc'], 'rb') as f:
+    training_dataset_location = os.path.join(form_dataset_location_path(config), config['training_dataset'])
+    eval_dataset_location = os.path.join(form_dataset_location_path(config), config['eval_dataset'])
+    logs_location = form_logs_location_path(config)
+
+    with open(training_dataset_location, 'rb') as f:
         training_dataset_pkl = pickle.load(f)
-    with open(config['eval_dataset_loc'], 'rb') as f:
+    with open(eval_dataset_location, 'rb') as f:
         eval_dataset_pkl = pickle.load(f)
     
-    seed_data = SeedData(save_path=config['default_loc'], resume_from={
+    seed_data = SeedData(save_path=logs_location, seeds=seeds, resume_from={
         "seed": None,
         "dataset_name": None,
         "algo_name": None,
     })
-
-    env = EnvFactory.create(config=config)
 
     for seed in seeds:
         d3rlpy.seed(seed)
@@ -89,20 +95,24 @@ if __name__ == "__main__":
                 "seed": seed,
                 "algo_name": algo_name,
             }
-            config['logdir'] = config['default_loc']+str(seed)
-            acutal_dir = config['logdir']+'/'+algo_name
+            
+            logdir = os.path.join(logs_location,str(seed))
+            acutal_dir = os.path.join(logdir,algo_name)
+            config['logdir'] = logdir # log dir for run --> needed for some algos
+            
+            wandb_run = wandb.init(reinit=True, project=project_title, name=acutal_dir, dir=logdir)
 
             prev_evaluate_on_environment_scorer = float('-inf')
             prev_continuous_action_diff_scorer = float('inf')
             if not seed_data.resume_checker(current_positions):
                 continue
             
-            algo, scorers = AlgorithmsFactory.create(config=config)
+            algo, scorers = AlgorithmsFactory.create(algo_name, config=config)
             
             if config['evaluate_on_environment']:
                 scorers['evaluate_on_environment_scorer'] = d3rlpy.metrics.scorer.evaluate_on_environment(env)
         
-            for epoch, metrics in algo.fitter(feeded_episodes, eval_episodes=eval_feeded_episodes, n_epochs=config['N_EPOCHS'], with_timestamp=False, logdir=config['logdir'], scorers=scorers):
+            for epoch, metrics in algo.fitter(feeded_episodes, eval_episodes=eval_feeded_episodes, n_epochs=config['N_EPOCHS'], with_timestamp=False, logdir=logdir, scorers=scorers):
                 wandb.log(metrics)
                 if config['evaluate_on_environment']:
                     if metrics['evaluate_on_environment_scorer'] > prev_evaluate_on_environment_scorer:
@@ -116,4 +126,4 @@ if __name__ == "__main__":
                 shutil.copyfile(os.path.join(acutal_dir, 'best_evaluate_on_environment_scorer.pt'), os.path.join(acutal_dir, 'best.pt'))
             else:
                 shutil.copyfile(os.path.join(acutal_dir, 'best_continuous_action_diff_scorer.pt'), os.path.join(acutal_dir, 'best.pt'))
-            wandb.wandb_run.finish()
+            wandb_run.finish()
