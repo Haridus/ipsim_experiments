@@ -54,7 +54,7 @@ def setup_alg_AWR(config):
     return d3rlpy.algos.AWR(use_gpu=True, scaler = config['scaler'], action_scaler=config['action_scaler'], reward_scaler=config['reward_scaler']), scorers
 
 def setup_alg_AWAC(config):
-    return d3rlpy.algos.AWAC(use_gpu=True, scaler = config['scaler'], action_scaler=config['action_scaler'], reward_scaler=config['reward_scaler'])
+    return d3rlpy.algos.AWAC(use_gpu=True, scaler = config['scaler'], action_scaler=config['action_scaler'], reward_scaler=config['reward_scaler']), default_scorers_setup()
 
 def setup_alg_COMBO(config):
     scorers={

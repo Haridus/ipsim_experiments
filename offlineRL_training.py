@@ -50,9 +50,8 @@ if __name__ == "__main__":
     parser.add_argument('-p','--process', type = str, default = 'ReactorEnv', help = 'Process model name')
     parser.add_argument('-w','--work_dir', type = str, default=os.path.dirname(__file__), help = 'Working directory')
     parser.add_argument('-s','--seed', type = int, default=42, help = 'Seed value') 
-    parser.add_argument('-a','--algs', nargs='+', default=['BC', 'CQL', 'PLAS', 'PLASWithPerturbation', 'BEAR', 'SAC', 'BCQ', 'CRR', 'AWAC', 'DDPG', 'TD3', 'COMBO', 'MOPO'], help = 'list of used algorithms')    
+    parser.add_argument('-a','--algs', nargs='+', default=['AWAC', 'AWR','DDPG', 'TD3', 'COMBO', 'MOPO', 'BC', 'CQL', 'PLAS', 'PLASWithPerturbation', 'BEAR', 'SAC', 'BCQ', 'CRR', ], help = 'list of used algorithms')    
     args = parser.parse_args()
-    #['BC', 'CQL', 'PLAS', 'PLASWithPerturbation', 'BEAR', 'SAC', 'BCQ', 'CRR', 'AWAC', 'DDPG', 'TD3', 'COMBO', 'MOPO']
 
     os. chdir(args.work_dir)
     project_title = args.process
