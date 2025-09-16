@@ -29,7 +29,7 @@ plt_dir: "plt_results"
 dataset_location: datasets 
 training_dataset: 'train_1000_normalize=False.pkl'
 eval_dataset: 'test_1000_normalize=False.pkl'
-test_initial_states: ''
+test_initial_states: 'initial_states_step_10.npy'
 training_num_of_initial_state: 1000
 eval_num_of_initial_state: 1000
 

@@ -27,7 +27,6 @@ AlgorithmsFactory.constructors["BEAR"] = setup_alg_BEAR
 AlgorithmsFactory.constructors["SAC"] = setup_alg_SAC
 AlgorithmsFactory.constructors["BCQ"] = setup_alg_BCQ
 AlgorithmsFactory.constructors["CRR"] = setup_alg_CRR
-AlgorithmsFactory.constructors["AWR"] = setup_alg_AWR
 AlgorithmsFactory.constructors["AWAC"] = setup_alg_AWAC
 AlgorithmsFactory.constructors["COMBO"] = setup_alg_COMBO
 AlgorithmsFactory.constructors["MOPO"] = setup_alg_MOPO
@@ -50,10 +49,10 @@ if __name__ == "__main__":
     parser.add_argument('-p','--process', type = str, default = 'ReactorEnv', help = 'Process model name')
     parser.add_argument('-w','--work_dir', type = str, default=os.path.dirname(__file__), help = 'Working directory')
     parser.add_argument('-s','--seed', type = int, default=42, help = 'Seed value') 
-    parser.add_argument('-a','--algs', nargs='+', default=['AWAC', 'AWR','DDPG', 'TD3', 'COMBO', 'MOPO', 'BC', 'CQL', 'PLAS', 'PLASWithPerturbation', 'BEAR', 'SAC', 'BCQ', 'CRR', ], help = 'list of used algorithms')    
+    parser.add_argument('-a','--algs', nargs='+', default=['COMBO','MOPO','AWAC','DDPG', 'TD3', 'BC', 'CQL', 'PLAS', 'PLASWithPerturbation', 'BEAR', 'SAC', 'BCQ', 'CRR', ], help = 'list of used algorithms')    
     args = parser.parse_args()
 
-    os. chdir(args.work_dir)
+    os.chdir(args.work_dir)
     project_title = args.process
     config = load_config_yaml(args.work_dir, args.process)
 
@@ -71,6 +70,13 @@ if __name__ == "__main__":
     with open(eval_dataset_location, 'rb') as f:
         eval_dataset_pkl = pickle.load(f)
     
+    dataset = d3rlpy.dataset.MDPDataset(training_dataset_pkl['observations'], training_dataset_pkl['actions'], training_dataset_pkl['rewards'], training_dataset_pkl['terminals'])
+    eval_dataset = d3rlpy.dataset.MDPDataset(eval_dataset_pkl['observations'], eval_dataset_pkl['actions'], eval_dataset_pkl['rewards'], eval_dataset_pkl['terminals'])
+    feeded_episodes = dataset.episodes
+    eval_feeded_episodes = eval_dataset.episodes
+    config['feeded_episodes'] = feeded_episodes
+    config['eval_feeded_episodes'] = eval_feeded_episodes
+
     seed_data = SeedData(save_path=logs_location, seeds=seeds, resume_from={
         "seed": None,
         "dataset_name": None,
@@ -81,13 +87,6 @@ if __name__ == "__main__":
         d3rlpy.seed(seed)
         np.random.seed(seed)
         random.seed(seed)
-    
-        dataset = d3rlpy.dataset.MDPDataset(training_dataset_pkl['observations'], training_dataset_pkl['actions'], training_dataset_pkl['rewards'], training_dataset_pkl['terminals'])
-        eval_dataset = d3rlpy.dataset.MDPDataset(eval_dataset_pkl['observations'], eval_dataset_pkl['actions'], eval_dataset_pkl['rewards'], eval_dataset_pkl['terminals'])
-        feeded_episodes = dataset.episodes
-        eval_feeded_episodes = eval_dataset.episodes
-        config['feeded_episodes'] = feeded_episodes
-        config['eval_feeded_episodes'] = eval_feeded_episodes
 
         for algo_name in args.algs:
             current_positions = {

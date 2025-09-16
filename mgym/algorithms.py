@@ -43,16 +43,6 @@ def setup_alg_BCQ(config):
 def setup_alg_CRR(config):
     return d3rlpy.algos.CRR(use_gpu=True, scaler = config['scaler'], action_scaler=config['action_scaler'], reward_scaler=config['reward_scaler']), default_scorers_setup()
 
-def setup_alg_AWR(config):
-    scorers = {
-                'td_error': d3rlpy.metrics.scorer.td_error_scorer,
-                'value_scale': d3rlpy.metrics.scorer.average_value_estimation_scorer,
-                'discounted_sum_of_advantage_scorer': d3rlpy.metrics.scorer.discounted_sum_of_advantage_scorer,
-                'initial_state_value_estimation_scorer': d3rlpy.metrics.scorer.initial_state_value_estimation_scorer,
-                'continuous_action_diff_scorer': d3rlpy.metrics.scorer.continuous_action_diff_scorer,
-            }
-    return d3rlpy.algos.AWR(use_gpu=True, scaler = config['scaler'], action_scaler=config['action_scaler'], reward_scaler=config['reward_scaler']), scorers
-
 def setup_alg_AWAC(config):
     return d3rlpy.algos.AWAC(use_gpu=True, scaler = config['scaler'], action_scaler=config['action_scaler'], reward_scaler=config['reward_scaler']), default_scorers_setup()
 
@@ -65,11 +55,11 @@ def setup_alg_COMBO(config):
     logdir = config['logdir']
     dynamics = d3rlpy.dynamics.ProbabilisticEnsembleDynamics(learning_rate=1e-4, use_gpu=True, scaler = config['scaler'], action_scaler=config['action_scaler'], reward_scaler=config['reward_scaler'])
     dynamics.fit(config['feeded_episodes'],
-        eval_episodes=config['eval_feeded_episodes'],
+                eval_episodes=config['eval_feeded_episodes'],
                 n_epochs=config['DYNAMICS_N_EPOCHS'],
                 logdir=logdir,
                 scorers=scorers)
-    return d3rlpy.algos.COMBO(dynamics=dynamics, use_gpu=True, scaler = config['scaler'], action_scaler=config['action_scaler'], reward_scaler=config['reward_scaler']), scorers
+    return d3rlpy.algos.COMBO(dynamics=dynamics, use_gpu=True, scaler = config['scaler'], action_scaler=config['action_scaler'], reward_scaler=config['reward_scaler']), default_scorers_setup()
 
 def setup_alg_MOPO(config):
     scorers={
@@ -84,7 +74,7 @@ def setup_alg_MOPO(config):
                 n_epochs=config['DYNAMICS_N_EPOCHS'],
                 logdir=logdir,
                 scorers=scorers)
-    return d3rlpy.algos.MOPO(dynamics=dynamics, use_gpu=True, scaler = config['scaler'], action_scaler=config['action_scaler'], reward_scaler=config['reward_scaler']), scorers
+    return d3rlpy.algos.MOPO(dynamics=dynamics, use_gpu=True, scaler = config['scaler'], action_scaler=config['action_scaler'], reward_scaler=config['reward_scaler']), default_scorers_setup()
 
 #======================================================
 def get_rl_model(alg_name, logs_location):

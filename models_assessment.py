@@ -39,7 +39,7 @@ if __name__ == "__main__":
     num_episodes = args.num_of_initial_states
     
     algorithms = []
-    algorithms.append( (control, 'baseline', config['normalize',] ) )
+    algorithms.append( (control, 'baseline', config['normalize'], ) )
     for alg_name in args.algs :
         algorithms.append( (RLModel(alg_name, logdir), alg_name, config['normalize'], ) )
 

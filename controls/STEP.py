@@ -6,8 +6,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../../../ipsim"))
 from ipsim import *
 from ipsim.models import *
 
-from scipy.integrate import solve_ivp
-
 import numpy as np
 import random as rnd
 from scipy.integrate import solve_ivp
@@ -103,9 +101,9 @@ def run(process_model, *, controller = None, time_target=30):
          ,{"parameter":"x3", "range":(0,1), "units": "", "title":"valve 3 pos"}
          ,{"parameter":"x4", "range":(0,1), "units": "", "title":"valve 4 pos"}
          ,{"parameter":"F1", "range":(0,300), "units": "kmol", "title":"Flow 1"}
-         ,{"parameter":"F2", "range":(0,30), "units": "kmol", "title":"Flow 1"}
-         ,{"parameter":"F3", "range":(0,100), "units": "kmol", "title":"Flow 1"}
-         ,{"parameter":"F4", "range":(0,200), "units": "kmol", "title":"Flow 1"}
+         ,{"parameter":"F2", "range":(0,30), "units": "kmol", "title":"Flow 2"}
+         ,{"parameter":"F3", "range":(0,100), "units": "kmol", "title":"Flow 3"}
+         ,{"parameter":"F4", "range":(0,200), "units": "kmol", "title":"Flow 4"}
          ,{"parameter":"cA", "range":(0,1), "units": "", "title":"mol. frac A"}
          ,{"parameter":"cB", "range":(0,1), "units": "", "title":"mol. frac B"}
          ,{"parameter":"cC", "range":(0,1), "units": "", "title":"mol. frac C"}
@@ -144,7 +142,9 @@ if __name__ == "__main__":
                , P, Vl ]
     
     manipulator = ProcessModel.make_common_manipulator([("ValvesControl","X"), ])
-    step = STEP(  solver = solve_ivp
+    solver = lambda f, ts, x, u, p: solve_ivp(f, ts, x, args = (u, p, ), method='LSODA')
+
+    step = STEP(  solver = solver
                 , observer = step_observer
                 , manipulator = manipulator)
     

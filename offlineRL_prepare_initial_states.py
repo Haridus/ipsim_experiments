@@ -3,6 +3,7 @@ from utils.utils import *
 from utils.constructors import *
 from utils.data_generation import *
 
+import os
 import argparse
 
 EnvFactory.constructors['ECSTR_S0'] = create_env_ECSTR_S0
@@ -16,17 +17,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-p','--process', type = str, default = 'ReactorEnv', help = 'Process model name')
     parser.add_argument('-w','--work_dir', type = str, default=os.path.dirname(__file__), help = 'Working directory')
+    parser.add_argument('-v','--val_per_state', type = str, default=10, help = 'values per state')
     args = parser.parse_args()
     
     os. chdir(args.work_dir)
 
     config = load_config_yaml(args.work_dir, args.process)
-    env = EnvFactory.create(config=config)
-    control = ControlFactory.create(config=config)
+    datasets_path = form_dataset_location_path(config)
+    mkdir(datasets_path)
 
-    eval_num_of_initial_state = config.get('eval_num_of_initial_state',1000)
-    training_num_of_initial_state = config.get('training_num_of_initial_state',1000)
-    eval_dataset = generate_dataset(env, control, config, eval_num_of_initial_state )
-    training_dataset = generate_dataset(env, control, config, training_num_of_initial_state )
-    save_dataset(training_dataset, config, f'train_{training_num_of_initial_state}')
-    save_dataset(eval_dataset, config, f'test_{eval_num_of_initial_state}')
+    initial_states_location = os.path.join(datasets_path,f'initial_states_step_{args.val_per_state}.npy')
+    
+    env = EnvFactory.create(config=config)
+    env.evenly_spread_initial_states(args.val_per_state, dump_location=initial_states_location)
+    
