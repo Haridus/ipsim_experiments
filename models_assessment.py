@@ -45,16 +45,17 @@ if __name__ == "__main__":
 
     results_csv = ['algo_name', 'on_episodes_reward_mean', 'episodes_reward_std', 'all_reward_mean', 'all_reward_std']
     for  alg, alg_name, normalize in algorithms:
-        save_dir = os.path.join(config['plt_dir'], alg_name)
-        observations_list, actions_list, rewards_list = env.evalute_algorithms(algorithms, num_episodes=num_episodes, initial_states=None, to_plt=False, plot_dir=save_dir)
+        save_dir = os.path.join(form_plt_location_path(config), alg_name)
+        alg_inf = [(alg, alg_name, normalize, )]
+        observations_list, actions_list, rewards_list = env.evalute_algorithms(alg_inf, num_episodes=num_episodes, initial_states=None, to_plt=False, plot_dir=save_dir)
         
-        results_dict = env.report_rewards(rewards_list, algo_names=env.algorithms_to_algo_names(algorithms), save_dir=save_dir)
+        results_dict = env.report_rewards(rewards_list, algo_names=env.algorithms_to_algo_names(alg_inf), save_dir=save_dir)
         results_csv.append([alg_name, results_dict[f'{alg_name}_on_episodes_reward_mean'], results_dict[f'{alg_name}_on_episodes_reward_std'], results_dict[f'{alg_name}_all_reward_mean'], results_dict[f'{alg_name}_all_reward_std']])
         np.save(os.path.join(save_dir, f'observations.npy'), observations_list)
         np.save(os.path.join(save_dir, f'actions.npy'), actions_list)
         np.save(os.path.join(save_dir, f'rewards.npy'), rewards_list)
 
-    with codecs.open(os.path.join(config['plt_dir'], "total_results_dict.csv"), "w+", encoding="utf-8") as fp:
+    with codecs.open(os.path.join(form_plt_location_path(config), "total_results_dict.csv"), "w+", encoding="utf-8") as fp:
         csv_writer = csv.writer(fp)
         for row in results_csv:
             csv_writer.writerow(row)   
