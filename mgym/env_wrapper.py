@@ -131,7 +131,7 @@ class EnvGym(smplEnvBase):
             self.init_observation = observation
         self.previous_observation = observation
         # /---- standard ----
-        self.process_model = self.process_model_constructor(dt = self.sampling_time, initial_state = initial_state)
+        self.process_model = self.process_model_constructor(dt = self.sampling_time, initial_state = self.init_observation)
 
         # ---- standard ----
         normalize = self.normalize if normalize is None else normalize

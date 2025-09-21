@@ -1,7 +1,6 @@
 seed: 42
 num_of_seeds: 1
 process_name: 'ReactorEnv'
-model_name: 'ppo'
 normalize: False
 dense_reward: True
 debug_mode: False
@@ -17,6 +16,19 @@ online_random_steps: 600
 online_update_interval: 100
 online_save_interval: 100
 
+scheduler_name: 'fifo_scheduler'
+time_budget_s: 86400 # a day in seconds
+use_tune: True
+num_gpus: 1
+num_workers: 1
+# num_gpus_per_worker: 0.1
+train_iter: 2000
+online_alg: 'ppo'
+online_logs_location: "ray"
+online_plt_dir: "plt_results"
+online_resylts: "ray_results"
+log_to_file: 'logfile.log'
+
 # for offline data generation and training
 N_EPOCHS: 100
 DYNAMICS_N_EPOCHS: 100
@@ -25,7 +37,7 @@ action_scaler: 'min_max' # None, 'min_max'
 reward_scaler: 'min_max' # None, 'min_max', 'standard'
 evaluate_on_environment: True
 logs_location: "d3rlpy_logs/"
-plt_dir: "plt_results"
+plt_dir: "plt"
 dataset_location: datasets 
 training_dataset: 'train_1000_normalize=False.pkl'
 eval_dataset: 'test_1000_normalize=False.pkl'

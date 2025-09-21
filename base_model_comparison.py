@@ -128,3 +128,4 @@ if __name__ == "__main__":
     print(f"process metrics: {process_metrics_calculator.ISF()}; {process_metrics_calculator.IAE()}; {process_metrics_calculator.ITAE()}; {process_metrics_calculator.ITSH()};")
 
     print(f"{ref_process_metrics_calculator.error} {ref_process_metrics_calculator.sums_ISF} {ref_process_metrics_calculator.sums_IAE} {ref_process_metrics_calculator.sums_ITAE} {ref_process_metrics_calculator.sums_ITSH}")
+

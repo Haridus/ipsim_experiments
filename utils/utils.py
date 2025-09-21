@@ -6,7 +6,7 @@ class EnvFactory:
     constructors = { }    
     @staticmethod
     def create(config):
-        env_name = config['model_name']
+        env_name = config['process_name']
         if env_name in EnvFactory.constructors:
             return EnvFactory.constructors[env_name](config=config)
         raise Exception("Unknown env")
@@ -16,7 +16,7 @@ class ControlFactory:
 
     @staticmethod
     def create(config):
-        env_name = config['model_name']
+        env_name = config['process_name']
         if env_name in ControlFactory.constructors:
             return ControlFactory.constructors[env_name](config=config)
         raise Exception("Unknown env")
@@ -36,7 +36,6 @@ def load_config_yaml(work_dir, model_name):
     with open(config_path, 'r') as fp:
         config = yaml.safe_load(fp)
         config['work_dir'] = work_dir
-        config['model_name'] = model_name
         return config
     return {}
 
@@ -49,9 +48,16 @@ def mkdir(path):
         pass
     return result
 
-def form_logs_location_path(config):
+def form_logs_location_path(config, online = False):
     env_name = config["process_name"]
     location = config.get("logs_location",f"d3rlpy_logs")
+    path = os.path.join(os.path.join(".", f"{env_name}"),f"{location}")
+    path = os.path.join(path,"online") if online else os.path.join(path,"offline")
+    return path
+
+def form_plt_location_path(config):
+    env_name = config["process_name"]
+    location = config.get("plt_dir",f"plt")
     path = os.path.join(os.path.join(".", f"{env_name}"),f"{location}")
     return path
 
