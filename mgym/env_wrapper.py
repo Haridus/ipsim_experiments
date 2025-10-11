@@ -8,10 +8,20 @@ from tqdm import tqdm
 from gym import spaces
 import matplotlib.pyplot as plt
 
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../../smpl")) 
+
 from smpl.envs.utils import smplEnvBase, TorchDatasetFromD4RL
 from mzutils import mkdir_p, normalize_spaces, denormalize_spaces, SimplePriorityQueue
 
 #=====================================================
+def _map_sample_(sample, in_dim, out_dim):
+    d = sample - in_dim[0]
+    _D = in_dim[1] - in_dim[0]
+    D_ = out_dim[1]- out_dim[0]
+    return out_dim[0]+D_*(d/_D)
+
 class EnvGym(smplEnvBase):
     def __init__( self
                 , *
@@ -22,7 +32,7 @@ class EnvGym(smplEnvBase):
                 , compute_diffs_on_reward = False
                 , action_dim      = 2
                 , observation_dim = 3
-                , error_reward     = -1000
+                , error_reward     = 0
                 , initial_state_deviation_ratio = 0.3
                 , sampling_time = 0.1
                 , max_steps = 100
@@ -56,6 +66,7 @@ class EnvGym(smplEnvBase):
         self.min_actions      = min_actions
         self.error_reward     = error_reward
         if self.reward_function is None:
+            self.old_reward_f = False
             self.reward_function = self.reward_function_standard
         if self.done_calculator is None:
             self.done_calculator = self.done_calculator_standard
@@ -77,6 +88,17 @@ class EnvGym(smplEnvBase):
         if self.normalize:
             self.observation_space = spaces.Box(low=-1, high=1, shape=(self.observation_dim,))
             self.action_space = spaces.Box(low=-1, high=1, shape=(self.action_dim,))
+            
+            self.norm_min_observations = np.full(self.observation_space.shape
+                                                , self.observation_space.low, self.np_dtype) 
+            self.norm_max_observations = np.full(self.observation_space.shape
+                                                , self.observation_space.high, self.np_dtype) 
+            
+            self.norm_min_actions = np.full(self.action_space.shape
+                                            , self.action_space.low, self.np_dtype) 
+            self.norm_max_actions = np.full(self.action_space.shape
+                                            , self.action_space.high, self.np_dtype)
+
         else:
             self.observation_space = spaces.Box(low=self.min_observations, high=self.max_observations,
                                                 shape=(self.observation_dim,))
@@ -84,17 +106,46 @@ class EnvGym(smplEnvBase):
         # /---- standard ----
 
         self.steady_observations = np.array(steady_observation, dtype=self.np_dtype)  # cA, T, h
+        self.steady_observations = self.normalize_observations(self.steady_observations)
+
         self.steady_actions = np.array(steady_action, dtype=self.np_dtype)  # Tc, qout
+        self.steady_actions = self.normalize_actions(self.steady_actions)         
+
         self.initial_state_deviation_ratio = initial_state_deviation_ratio
 
         self.process_model_constructor = process_model_constructor
-
+    
+    def normalize_observations(self, observation):
+        normalize = self.normalize if self.normalize is not None else False
+        if normalize:
+            return _map_sample_(observation, (self.min_observations, self.max_observations,), (self.norm_min_observations, self.norm_max_observations,) )
+        return observation
+    
+    def denormalize_observations(self, observation):
+        normalize = self.normalize if self.normalize is not None else False
+        if normalize:
+            return _map_sample_(observation, (self.norm_min_observations, self.norm_max_observations,), (self.min_observations, self.max_observations,)  )
+        return observation
+    
+    def normalize_actions(self, actions):
+        normalize = self.normalize if self.normalize is not None else False
+        if normalize:
+            return _map_sample_(actions, (self.min_actions, self.max_actions,), (self.norm_min_actions, self.norm_max_actions,) )
+        return actions
+    
+    def denormalize_actions(self, actions):
+        normalize = self.normalize if self.normalize is not None else False
+        if normalize:
+            return _map_sample_(actions, (self.norm_min_actions, self.norm_max_actions,), (self.min_actions, self.max_actions,)  )
+        return actions
+    
     def reward_function_standard(self, previous_observation, action, current_observation, reward=None):
         # ---- standard ----
         # s, a, r, s, a
         if reward is not None:
             return reward
         elif self.observation_beyond_box(current_observation) or self.action_beyond_box(action):
+            print("observation_beyond_box | action_beyond_box")
             return self.error_reward
         # /---- standard ----
         current_observation_evaluated = self.evaluate_observation(current_observation)
@@ -109,6 +160,7 @@ class EnvGym(smplEnvBase):
         reward = max(self.error_reward, reward)  # reward cannot be smaller than the error_reward
         if self.debug_mode:
             print("reward:", reward)
+        
         return reward
         # /---- standard ----
 
@@ -129,16 +181,15 @@ class EnvGym(smplEnvBase):
         else:
             observation = self.sample_initial_state()
             self.init_observation = observation
-        self.previous_observation = observation
+
         # /---- standard ----
         self.process_model = self.process_model_constructor(dt = self.sampling_time, initial_state = self.init_observation)
+        self.init_observation = self.normalize_observations(self.init_observation)
+        self.previous_observation = self.init_observation
 
         # ---- standard ----
-        normalize = self.normalize if normalize is None else normalize
-        if normalize:
-            observation, _, _ = normalize_spaces(observation, self.max_observations, self.min_observations)
+        observation = self.init_observation
         return observation
-        # /---- standard ----
 
     def step(self, action, normalize=None):
         # ---- standard ----
@@ -152,16 +203,13 @@ class EnvGym(smplEnvBase):
         done = None
         done_info = {"terminal": False, "timeout": False}
         action = np.array(action, dtype=self.np_dtype)
-        normalize = self.normalize if normalize is None else normalize
-        if normalize:
-            action, _, _ = denormalize_spaces(action, self.max_actions, self.min_actions)
-        # /---- standard ----
 
-        # ---- to capture numpy warnings ---- 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("error")
             try:
-                observation = self.process_model.step(action = action)
+                _action = self.denormalize_actions(action)
+                observation = self.process_model.step(action = _action)
+                
             except Exception as e:
                 print("Got Exception/Warning: ", e)
                 observation = self.previous_observation
@@ -170,15 +218,16 @@ class EnvGym(smplEnvBase):
                 done_info["terminal"] = True
         # /---- to capture numpy warnings ---- 
 
-        # ---- standard ----
+        observation = self.normalize_observations(observation)
+
         # compute reward
         if not reward:
             reward = self.reward_function(self.previous_observation, action, observation, reward=reward)
         # compute done
         if not done:
             done, done_info = self.done_calculator(observation, self.step_count, reward, done=done, done_info=done_info)
-        self.previous_observation = observation
 
+        #print(f"step: {reward}")
         self.total_reward += reward
         if self.dense_reward:
             reward = reward  # conventional
@@ -186,15 +235,15 @@ class EnvGym(smplEnvBase):
             reward = 0.0
         else:
             reward = self.total_reward
+        
         # clip observation so that it won't be beyond the box
-        observation = observation.clip(self.min_observations, self.max_observations)
-        if normalize:
-            observation, _, _ = normalize_spaces(observation, self.max_observations, self.min_observations)
+        observation = observation.clip(self.normalize_observations(self.min_observations), self.normalize_observations(self.max_observations))
+        self.previous_observation = observation
+
         self.step_count += 1
         info = {}
         info.update(done_info)
         return observation, reward, done, info
-        # /---- standard ----
 
     def evenly_spread_initial_states(self, val_per_state, dump_location=None):
         """
@@ -456,22 +505,40 @@ class EnvGym(smplEnvBase):
         return outperformances
 
     def sample_initial_state(self):
-        init_observation = np.maximum(
+        if self.normalize:
+            dn_steady_observations = self.denormalize_observations(self.steady_observations)
+            init_observation = np.maximum( np.random.uniform(low=np.clip((1 - self.initial_state_deviation_ratio) * dn_steady_observations, a_min=self.min_observations, a_max=self.max_observations),
+                                                             high=np.clip((1 + self.initial_state_deviation_ratio) * dn_steady_observations, a_min=self.min_observations, a_max=self.max_observations))
+                                        , 0, dtype=self.np_dtype)
+
+            #init_observation = np.random.uniform(low=self.min_observations, high=self.max_observations)
+            init_observation = init_observation.clip(self.min_observations, self.max_observations)
+            return init_observation
+        else:
+            init_observation = np.maximum(
             np.random.uniform(low=(1 - self.initial_state_deviation_ratio) * self.steady_observations,
                               high=(1 + self.initial_state_deviation_ratio) * self.steady_observations), 0,
             dtype=self.np_dtype)
-        init_observation = init_observation.clip(self.min_observations, self.max_observations)
-        return init_observation
+            init_observation = init_observation.clip(self.min_observations, self.max_observations)
+            return init_observation
 
     def evaluate_observation(self, observation):
         """
         observation: numpy array of shape (self.observation_dim)
         returns: observation evaluation (reward in a sense)
         """
+        
+        if self.normalize:
+            #obs = np.minimum( 1.0/(np.sqrt(np.sum( (observation - self.steady_observations)**2)) ), 1e6)
+            obs = np.minimum( 1.0/np.abs(observation - self.steady_observations).max(), 1e6)
+            return obs
 
-        return float(- (np.mean((observation - self.steady_observations) ** 2 / np.maximum(
-            (self.init_observation - self.steady_observations) ** 2, 1e-8))))
-
+        if self.old_reward_f:
+            return float(- (np.mean((observation - self.steady_observations) ** 2 / np.maximum(
+                        (self.init_observation - self.steady_observations) ** 2, 1e-8))))
+        
+        return np.minimum( 1.0/np.abs(observation - self.steady_observations).max(), 1e6)
+            
     def generate_dataset_with_algorithm(self, algorithm, normalize=None, num_episodes=1, error_reward=-1000.0,
                                         initial_states=None, format='d4rl'):
         """
@@ -506,6 +573,7 @@ class EnvGym(smplEnvBase):
                 a = algorithm.predict(tmp_o)
                 if normalize:
                     a, _, _ = denormalize_spaces(a, self.max_actions, self.min_actions)
+                #print(f'generate_dataset_with_algorithm: {initial_states[n_epi]} {a} {r}')
                 dataset['observations'].append(o)
                 dataset['actions'].append(a)
                 dataset['rewards'].append(r)

@@ -39,13 +39,9 @@ class STEPMultiloopPControl:
         self.F4sp_adj = min(self.F4sp_adj+self.KcPC*( (errnPC-self.errn1PC)+(self.dt*errnPC)/self.TauiPC ), 0)
         self.errn1PC=errnPC
 
-        F4_setpoint_sv  = self.F4_setpoint
-        P_setpoint_sv   = self.P_setpoint
-        cA3_setpoint_sv = self.cA3_setpoint
-        
-        self.F4_setpoint = self.F4_setpoint + self.F4sp_adj
+        F4_setpoint = self.F4_setpoint + self.F4sp_adj
 
-        F4errn  = self.F4_setpoint  - meas[7]
+        F4errn  = F4_setpoint  - meas[7]
         Perrn   = self.P_setpoint   - meas[11]
         cA3errn = (self.cA3_setpoint - meas[10])*100 # since Kcs for address valves positions from 0 to 100, but here they witheen range 0 to 1
         
@@ -53,19 +49,16 @@ class STEPMultiloopPControl:
         Pdelu   = self.Kcs[1]*( (Perrn   - self.Perrn1)+(self.dt*Perrn)  /self.tauis[1] )
         cA3delu = self.Kcs[2]*( (cA3errn - self.cA3errn1)+(self.dt*cA3errn)/self.tauis[2] )
         
-        X_target = [ np.clip(mvs[0] + F4delu/100, a_min= 0, a_max=1)
+        X_target = [ np.clip(mvs[0] + F4delu/100, a_min= 0, a_max=1) #since Kcs and tauis is specified for X form 0 to 100% and here X from 0 to 1dd
                    , np.clip(mvs[1] + cA3delu/100, a_min= 0, a_max=1)
                    , np.clip(mvs[2] + Pdelu/100, a_min= 0, a_max=1)
         ]
         X_target.append(mvs[3])
+        #print(f"X:{X_target}")
         
         self.F4errn1  = F4errn
-        self.Perrn1 = Perrn
-        self.cA3errn1  =cA3errn
-        
-        self.F4_setpoint  = F4_setpoint_sv   
-        self.P_setpoint   = P_setpoint_sv    
-        self.cA3_setpoint = cA3_setpoint_sv
+        self.Perrn1   = Perrn
+        self.cA3errn1 = cA3errn
         
         return X_target
 
@@ -148,8 +141,17 @@ if __name__ == "__main__":
                 , observer = step_observer
                 , manipulator = manipulator)
     
-    multiloop_control = STEPMultiloopPControl(F4_setpoint=100.00318503097513, P_setpoint=2700.165624248256,cA3_setpoint=0.3870675068985829,dt=step.dt())
-
+    multiloop_control = None
+    multiloop_control = STEPMultiloopPControl(F4_setpoint=100, P_setpoint=2700, cA3_setpoint=0.38, dt=step.dt())
+    #F_4 = 130, P= 2850, yA3 = 0.63
+    #multiloop_control = STEPMultiloopPControl(F4_setpoint=130.00, P_setpoint=2850.0, cA3_setpoint=0.63, dt=step.dt())
+    def test_Control(self, meas, mvs = None, *args, **kwds):
+        return [meas[0], meas[1], 1,meas[3], ]
+        #return [meas[0], 0.4, meas[2],meas[3], ]
+        #return [0.76, meas[1], meas[2],meas[3], ]
+        #return [meas[0], 0, meas[2],meas[3], ]
+    multiloop_control = test_Control
+    
     data, metadata = run(step, controller=multiloop_control)
     show(data, metadata=metadata)
     plt.show()

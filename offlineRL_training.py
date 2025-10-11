@@ -17,6 +17,10 @@ ControlFactory.constructors['ECSTR_S0'] = create_pid_conrol_ECSTR_S0
 EnvFactory.constructors['ReactorEnv'] = create_env_ReactorEnv
 ControlFactory.constructors['ReactorEnv'] = create_pid_control_ReactorEnv
 
+EnvFactory.constructors['DistillationColumn'] = create_env_DistillationColumn
+ControlFactory.constructors['DistillationColumn'] = create_pid_conrol_DistillationColumn
+
+#-----------------------------------------------------------------------------
 AlgorithmsFactory.constructors["CQL"] = setup_alg_CQL
 AlgorithmsFactory.constructors["PLAS"] = setup_alg_PLAS
 AlgorithmsFactory.constructors["PLASWithPerturbation"] = setup_alg_PLASWithPerturbation
@@ -46,15 +50,30 @@ def init_seeds(config):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p','--process', type = str, default = 'ReactorEnv', help = 'Process model name')
+    parser.add_argument('-p','--process', type = str, default = 'DistillationColumn', help = 'Process model name')
     parser.add_argument('-w','--work_dir', type = str, default=os.path.dirname(__file__), help = 'Working directory')
     parser.add_argument('-s','--seed', type = int, default=42, help = 'Seed value') 
-    parser.add_argument('-a','--algs', nargs='+', default=['COMBO','MOPO','AWAC','DDPG', 'TD3', 'BC', 'CQL', 'PLAS', 'PLASWithPerturbation', 'BEAR', 'SAC', 'BCQ', 'CRR', ], help = 'list of used algorithms')    
+    parser.add_argument('-a','--algs', nargs='+', default=[  'COMBO'
+                                                           , 'MOPO'
+                                                           , 'AWAC'
+                                                           , 'DDPG'
+                                                           , 'TD3'
+                                                           , 'BC'
+                                                           , 'CQL'
+                                                           , 'PLAS'
+                                                           , 'PLASWithPerturbation'
+                                                           , 'BEAR'
+                                                           , 'SAC'
+                                                           , 'BCQ'
+                                                           , 'CRR'
+                                                           , ], help = 'list of used algorithms')    
     args = parser.parse_args()
 
     os.chdir(args.work_dir)
     project_title = args.process
     config = load_config_yaml(args.work_dir, args.process)
+    config['normalize'] = False
+    config['compute_diffs_on_reward'] = True
 
     seed = config.get('seed', args.seed)
     config['seed'] = seed
@@ -68,8 +87,8 @@ if __name__ == "__main__":
     with open(training_dataset_location, 'rb') as f:
         training_dataset_pkl = pickle.load(f)
     with open(eval_dataset_location, 'rb') as f:
-        eval_dataset_pkl = pickle.load(f)
-    
+        eval_dataset_pkl = pickle.load(f)   
+
     dataset = d3rlpy.dataset.MDPDataset(training_dataset_pkl['observations'], training_dataset_pkl['actions'], training_dataset_pkl['rewards'], training_dataset_pkl['terminals'])
     eval_dataset = d3rlpy.dataset.MDPDataset(eval_dataset_pkl['observations'], eval_dataset_pkl['actions'], eval_dataset_pkl['rewards'], eval_dataset_pkl['terminals'])
     feeded_episodes = dataset.episodes

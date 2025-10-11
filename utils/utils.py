@@ -145,3 +145,37 @@ class SeedData:
         return self.resume_check_passed
     
 #-----------------------------------------------------------------------
+class MetricsCalculator:
+    def __init__(self, setpoints, dt = 1):
+        self.setpoints = setpoints
+        self.dt = dt
+
+        self.t = 0
+        self.error     = [0 for x in range(len(self.setpoints))]
+        self.error2    = [0 for x in range(len(self.setpoints))]
+        self.sums_ISF  = [0 for x in range(len(self.setpoints))]
+        self.sums_IAE  = [0 for x in range(len(self.setpoints))]
+        self.sums_ITAE = [0 for x in range(len(self.setpoints))]
+        self.sums_ITSH = [0 for x in range(len(self.setpoints))]
+    
+    def update(self, state):
+        self.t += self.dt
+        for _ in range(min(len(self.setpoints), len(state))):
+            e = self.setpoints[_] - state[_]
+            self.error[_] += e
+            self.sums_ISF[_]  += e**2
+            self.sums_IAE[_]  += abs(e)
+            self.sums_ITAE[_] += abs(e)*self.t
+            self.sums_ITSH[_] += (e**2)*self.t
+
+    def ISF(self):
+        return [sum*self.dt/2 for sum in self.sums_ISF]
+    
+    def IAE(self):
+        return [sum*self.dt/2 for sum in self.sums_IAE]
+    
+    def ITAE(self):
+        return [sum*self.dt/2 for sum in self.sums_ITAE]
+    
+    def ITSH(self):
+        return [sum*self.dt/2 for sum in self.sums_ITSH]

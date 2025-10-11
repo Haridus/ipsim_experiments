@@ -100,6 +100,12 @@ class RLModel(object):
         except AssertionError:
             inp = self.algorithm.predict([state])
             return inp[0]
-    
+        
+class RayAgentWrapper:
+    def __init__(self, agent):
+        self.agent = agent
+
+    def predict(self, observation):
+        return self.agent.compute_single_action(observation, unsquash_action=True, clip_action=True)
 #=========================================================
 
