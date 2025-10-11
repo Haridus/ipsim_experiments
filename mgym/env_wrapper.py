@@ -145,7 +145,6 @@ class EnvGym(smplEnvBase):
         if reward is not None:
             return reward
         elif self.observation_beyond_box(current_observation) or self.action_beyond_box(action):
-            print("observation_beyond_box | action_beyond_box")
             return self.error_reward
         # /---- standard ----
         current_observation_evaluated = self.evaluate_observation(current_observation)

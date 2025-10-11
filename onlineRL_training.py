@@ -14,12 +14,14 @@ import pandas as pd
 import json
 import argparse
 
+import pandas as pd
+
 import ray as ray 
 from ray import tune
 from ray.tune.registry import register_env
 from ray.tune.logger import DEFAULT_LOGGERS
 from ray.tune.integration.wandb import WandbLogger
-import pandas as pd
+from ray.autoscaler.sdk import request_resources
 
 #================================================================
 EnvFactory.constructors['ECSTR_S0'] = create_env_ECSTR_S0
@@ -28,96 +30,21 @@ ControlFactory.constructors['ECSTR_S0'] = create_pid_conrol_ECSTR_S0
 EnvFactory.constructors['ReactorEnv'] = create_env_ReactorEnv
 ControlFactory.constructors['ReactorEnv'] = create_pid_control_ReactorEnv
 
-AlgorithmsFactory.constructors["CQL"] = setup_alg_CQL
-AlgorithmsFactory.constructors["PLAS"] = setup_alg_PLAS
-AlgorithmsFactory.constructors["PLASWithPerturbation"] = setup_alg_PLASWithPerturbation
-AlgorithmsFactory.constructors["DDPG"] = setup_alg_DDPG
-AlgorithmsFactory.constructors["BC"] = setup_alg_BC
-AlgorithmsFactory.constructors["TD3"] = setup_alg_TD3
-AlgorithmsFactory.constructors["BEAR"] = setup_alg_BEAR
-AlgorithmsFactory.constructors["SAC"] = setup_alg_SAC
-AlgorithmsFactory.constructors["BCQ"] = setup_alg_BCQ
-AlgorithmsFactory.constructors["CRR"] = setup_alg_CRR
-AlgorithmsFactory.constructors["AWAC"] = setup_alg_AWAC
-AlgorithmsFactory.constructors["COMBO"] = setup_alg_COMBO
-AlgorithmsFactory.constructors["MOPO"] = setup_alg_MOPO
+EnvFactory.constructors['DistillationColumn'] = create_env_DistillationColumn
+ControlFactory.constructors['DistillationColumn'] = create_pid_conrol_DistillationColumn
 
-def setup_alg_ppo(config):
-    import ray.rllib.agents.ppo as ppo
-    imported_algo = ppo
-    rl_trainer = ppo.PPOTrainer
-    rl_config = imported_algo.DEFAULT_CONFIG.copy()
-    return rl_trainer, rl_config
-
-def setup_alg_pg(config):
-    import ray.rllib.agents.pg as pg
-    imported_algo = pg
-    rl_trainer = pg.PGTrainer
-    rl_config = imported_algo.DEFAULT_CONFIG.copy()
-    return rl_trainer, rl_config
-
-def setup_alg_ars(config):
-    import ray.rllib.agents.ars as ars
-    imported_algo = ars
-    rl_trainer = ars.ARSTrainer
-    rl_config = imported_algo.DEFAULT_CONFIG.copy()
-    return rl_trainer, rl_config
-
-def setup_alg_ddpg(config):
-    import ray.rllib.agents.ddpg as ddpg
-    imported_algo = ddpg
-    rl_trainer = ddpg.DDPGTrainer
-    rl_config = imported_algo.DEFAULT_CONFIG.copy()
-    return rl_trainer, rl_config
-
-def setup_alg_apex_ddpg(config):
-    import ray.rllib.agents.ddpg.apex as apex
-    imported_algo = apex
-    rl_trainer = apex.DDPGTrainer
-    rl_config = apex.APEX_DDPG_DEFAULT_CONFIG.copy()
-    return rl_trainer, rl_config
-
-def setup_alg_a3c(config):
-    import ray.rllib.agents.a3c as a3c
-    imported_algo = a3c
-    rl_trainer = a3c.A3CTrainer
-    rl_config = imported_algo.DEFAULT_CONFIG.copy()
-    rl_config["lr"] = 0.00005
-    return rl_trainer, rl_config
-
-def setup_alg_sac(config):
-    import ray.rllib.agents.sac as sac
-    imported_algo = sac
-    rl_trainer = sac.SACTrainer
-    rl_config = imported_algo.DEFAULT_CONFIG.copy()
-    return rl_trainer, rl_config
-
-def setup_alg_impala(config):
-    import ray.rllib.agents.impala as impala
-    imported_algo = impala
-    rl_trainer = impala.ImpalaTrainer
-    rl_config = imported_algo.DEFAULT_CONFIG.copy()
-    return rl_trainer, rl_config
-
-def setup_alg_a2c(config):
-    import ray.rllib.agents.a3c.a2c as a2c
-    imported_algo = a2c
-    rl_trainer = a2c.A2CTrainer
-    rl_config = imported_algo.A2C_DEFAULT_CONFIG.copy()
-    return rl_trainer, rl_config
-
+#-------------------------------------------------------------------
 AlgorithmsFactory.constructors["ppo"] = setup_alg_ppo
-AlgorithmsFactory.constructors["pg"] = setup_alg_pg
-AlgorithmsFactory.constructors["ars"] = setup_alg_ars
-AlgorithmsFactory.constructors["ddpg"] = setup_alg_ddpg
-AlgorithmsFactory.constructors["apex_ddpg"] = setup_alg_apex_ddpg
-AlgorithmsFactory.constructors["a3c"] = setup_alg_a3c
-AlgorithmsFactory.constructors["sac"] = setup_alg_sac
-AlgorithmsFactory.constructors["impala"] = setup_alg_impala
-AlgorithmsFactory.constructors["a2c"] = setup_alg_a2c
+AlgorithmsFactory.constructors["pg"] = setup_alg_pg # fail to train with error category.encode("ascii") + b"/" + key.encode("ascii"))  AttributeError: 'property' object has no attribute 'encode'
+AlgorithmsFactory.constructors["ars"] = setup_alg_ars # very fast train
+AlgorithmsFactory.constructors["ddpg"] = setup_alg_ddpg #fail to call predict after train
+AlgorithmsFactory.constructors["apex_ddpg"] = setup_alg_apex_ddpg #fail to train with some additional dependansies
+AlgorithmsFactory.constructors["a3c"] = setup_alg_a3c # failed after aprox 1000 iterations with tensor[nan nan] error
+AlgorithmsFactory.constructors["sac"] = setup_alg_sac 
+AlgorithmsFactory.constructors["impala"] = setup_alg_impala #failed around 500 iterations
+AlgorithmsFactory.constructors["a2c"] = setup_alg_a2c # failed after aprox 1000 iterations with tensor[nan nan] error
 
 #================================================================
-
 def form_online_logs_location_path(config, online = False):
     env_name = config["process_name"]
     location = config.get("online_logs_location",f"ray")
@@ -129,10 +56,9 @@ if __name__ == "__main__":
     global ONLINE_PREV_EVALUATE_ON_ENVIRONMENT_SCORER
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p','--process', type = str, default = 'ECSTR_S0', help = 'Process model name')
+    parser.add_argument('-p','--process', type = str, default = 'DistillationColumn', help = 'Process model name')
     parser.add_argument('-w','--work_dir', type = str, default=os.path.dirname(__file__), help = 'Working directory')
-    parser.add_argument('-s','--seed', type = int, default=None, help = 'Seed value') 
-    parser.add_argument('-a','--algs', nargs='+', default=['CQL','BC', 'PLAS', 'PLASWithPerturbation', 'BEAR', 'SAC', 'BCQ', 'CRR', 'AWAC', 'DDPG', 'TD3', 'COMBO', 'MOPO'], help = 'list of used algorithms')    
+
     args = parser.parse_args()
     
     os. chdir(args.work_dir)
@@ -160,20 +86,22 @@ if __name__ == "__main__":
             return create_env_ECSTR_S0(config)
         if config['process_name'] == 'ReactorEnv':
             return create_env_ReactorEnv(config)
+        if config['process_name'] == 'DistillationColumn':
+            return create_env_DistillationColumn(config)
         raise Exception('unknown processs name')
     
     register_env("ECSTR_S0", env_creator)
     register_env("ReactorEnv", env_creator)
+    register_env("DistillationColumn", env_creator)
 
     if config['use_tune']:
-        print("STEP_1")
         with wandb.init(project = config['process_name'], dir=os.path.abspath(log_dir),   sync_tensorboard = True) as run:
-            print("STEP_1_1")
             rl_config["env"] = args.process
-            #rl_config["num_gpus"] = config.get('num_gpus',1)
+            rl_config["num_gpus"] = config.get('num_gpus',1)
             rl_config["framework"] = "torch"
             rl_config["num_workers"] = config.get('num_workers',1)
             rl_config["evaluation_num_workers"] = config.get('num_workers',1)
+            #rl_config["num_cpus_per_worker"] = 4
             rl_config["evaluation_interval"] = int(config['train_iter'] / 10)
             #rl_config["evaluation_duration"] = 10
             rl_config["env_config"] = env_config
@@ -184,7 +112,6 @@ if __name__ == "__main__":
                 }
             }
             if config['scheduler_name'] == 'asha_scheduler':
-                print("STEP_1_2: asha_scheduler")
                 scheduler = tune.schedulers.ASHAScheduler(
                     time_attr='training_iteration',
                     metric='episode_reward_mean',
@@ -210,12 +137,13 @@ if __name__ == "__main__":
                     loggers=DEFAULT_LOGGERS #+ (WandbLogger, )
                 )
             elif config['scheduler_name'] == 'fifo_scheduler':
-                print("STEP_1_2: fifo_scheduler")
                 analysis = tune.run(rl_trainer, 
                     metric='episode_reward_mean',
                     mode='max',
                     time_budget_s=config['time_budget_s'],
                     config=rl_config, 
+                    #resources_per_trial = plFactory,
+                    #resources_per_trial={"cpu": 4, "gpu": 4}, 
                     local_dir=log_dir,
                     log_to_file='logfile.log',
                     checkpoint_freq=1,
@@ -233,7 +161,6 @@ if __name__ == "__main__":
         ))
         
     else:
-        print("STEP_2")
         CHECKPOINT_ROOT = os.path.join(log_dir,datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
         best_episode_reward_mean = -1e8
         checkpoint_file = ""

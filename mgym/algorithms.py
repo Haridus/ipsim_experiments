@@ -107,5 +107,69 @@ class RayAgentWrapper:
 
     def predict(self, observation):
         return self.agent.compute_single_action(observation, unsquash_action=True, clip_action=True)
+    
 #=========================================================
+def setup_alg_ppo(config):
+    import ray.rllib.agents.ppo as ppo
+    imported_algo = ppo
+    rl_trainer = ppo.PPOTrainer
+    rl_config = imported_algo.DEFAULT_CONFIG.copy()
+    return rl_trainer, rl_config
+
+def setup_alg_pg(config):
+    import ray.rllib.agents.pg as pg
+    imported_algo = pg
+    rl_trainer = pg.PGTrainer
+    rl_config = imported_algo.DEFAULT_CONFIG.copy()
+    return rl_trainer, rl_config
+
+def setup_alg_ars(config):
+    import ray.rllib.agents.ars as ars
+    imported_algo = ars
+    rl_trainer = ars.ARSTrainer
+    rl_config = imported_algo.DEFAULT_CONFIG.copy()
+    return rl_trainer, rl_config
+
+def setup_alg_ddpg(config):
+    import ray.rllib.agents.ddpg as ddpg
+    imported_algo = ddpg
+    rl_trainer = ddpg.DDPGTrainer
+    rl_config = imported_algo.DEFAULT_CONFIG.copy()
+    return rl_trainer, rl_config
+
+def setup_alg_apex_ddpg(config):
+    import ray.rllib.agents.ddpg.apex as apex
+    imported_algo = apex
+    rl_trainer = apex.DDPGTrainer
+    rl_config = apex.APEX_DDPG_DEFAULT_CONFIG.copy()
+    return rl_trainer, rl_config
+
+def setup_alg_a3c(config):
+    import ray.rllib.agents.a3c as a3c
+    imported_algo = a3c
+    rl_trainer = a3c.A3CTrainer
+    rl_config = imported_algo.DEFAULT_CONFIG.copy()
+    rl_config["lr"] = 0.00005
+    return rl_trainer, rl_config
+
+def setup_alg_sac(config):
+    import ray.rllib.agents.sac as sac
+    imported_algo = sac
+    rl_trainer = sac.SACTrainer
+    rl_config = imported_algo.DEFAULT_CONFIG.copy()
+    return rl_trainer, rl_config
+
+def setup_alg_impala(config):
+    import ray.rllib.agents.impala as impala
+    imported_algo = impala
+    rl_trainer = impala.ImpalaTrainer
+    rl_config = imported_algo.DEFAULT_CONFIG.copy()
+    return rl_trainer, rl_config
+
+def setup_alg_a2c(config):
+    import ray.rllib.agents.a3c.a2c as a2c
+    imported_algo = a2c
+    rl_trainer = a2c.A2CTrainer
+    rl_config = imported_algo.A2C_DEFAULT_CONFIG.copy()
+    return rl_trainer, rl_config
 
