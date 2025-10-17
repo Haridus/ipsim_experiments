@@ -75,6 +75,28 @@ def create_pid_control_ReactorEnv(config):
     return ReactorPID(Kis=[100.0, 0.5], steady_state=[0.8778252, 0.659], steady_action=[26.85, 0.1], min_action=[15.0, 0.05], max_action=[35.0, 0.2])
 
 #---------------------------------------------------------------------------------
+class EvaluationDistillationColumnFeed(ProcessNode):
+    O  = Outputs( ("feed", "x",) )
+    
+    def __init__(self, name, x_feed_data):
+        import scipy
+        import itertools
+        super().__init__(name)
+        
+        self.x_feed = itertools.cycle(x_feed_data)
+        self.x_feed_f = lambda: next(self.x_feed)
+
+        self. i = 0
+
+    def _evaluate(self):
+        if (self._model is None) or (self._model.time() != self._current_time):
+            self._results.clear()
+
+        if not self._results:
+            self.set_result("x", self.x_feed_f())
+            self.set_result("feed", 1)
+            self._current_time = self._model.time()
+
 def create_env_DistillationColumn(config):
     MAX_OBSERVATIONS = [1.0,]  
     MIN_OBSERVATIONS = [1e-08,]
@@ -106,11 +128,21 @@ def create_env_DistillationColumn(config):
                                      , dt=1
                                      , init_state=init_state)
     
-
-        #skip some steps to simulate random state
-        u = [3,] 
-        for _ in range(random.randint(0,300)):
-            process.step(action = u)
+        if config.get("eval_mode", False):
+            import pandas as pd
+            df = pd.read_csv('DC_IndustrialControlAlgorithm_data.csv')
+            evaluation_x_feed = df['x_Feed'].to_numpy()
+            evaluation_feed_node = EvaluationDistillationColumnFeed('Feed', evaluation_x_feed)
+            
+            process.add_node(evaluation_feed_node)
+            process.bond_nodes("DistillationColumn","feed","Feed","feed")
+            process.bond_nodes("DistillationColumn","x_feed","Feed","x")
+            
+        else:
+            #skip some steps to simulate random state
+            u = [3,] 
+            for _ in range(random.randint(0,300)):
+                process.step(action = u)
 
         return process
            
