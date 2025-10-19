@@ -44,7 +44,7 @@ class STEPMultiloopPControl:
         Pdelu   = self.Kcs[1]*( (Perrn   - self.Perrn1)   + (self.dt*Perrn)  /self.tauis[1] )
         cA3delu = self.Kcs[2]*( (cA3errn - self.cA3errn1) + (self.dt*cA3errn)/self.tauis[2] )
         
-        X = self.proress.nodes()['SensorX'].value("X")
+        X = self.proress.process_model.nodes()['SensorX'].value("X")
 
         X_target = [ np.clip(X[0] + F4delu/100, a_min= 0, a_max=1) #since Kcs and tauis is specified for X form 0 to 100% and here X from 0 to 1dd
                    , np.clip(X[1] + cA3delu/100, a_min= 0, a_max=1)
@@ -56,7 +56,11 @@ class STEPMultiloopPControl:
         self.cA3errn1 = cA3errn
         
         return X_target
-
+    
+    def predict(self, measured_value, *args, **kwds) :
+        nv = self.__call__(measured_value, None, *args, **kwds)
+        return nv
+    
 #===============================================================================
 def show(x, metadata, title = "", *, cols=4, dt=0.1):
     fig = plt.figure(figsize=(6,6),)
@@ -133,6 +137,12 @@ if __name__ == "__main__":
 
     multiloop_control = None
     #multiloop_control = STEPMultiloopPControl(F4_setpoint=99.99991893665879, P_setpoint=2700.1477279941, cA3_setpoint=0.4699865552748352, dt=step.dt())
+    #F_4 = 130, P= 2850, yA3 = 0.63
+
+    random_action = [rnd.randrange(1,100)/100.0, rnd.randrange(1,100)/100.0, rnd.randrange(1,100)/100.0]
+    step.step(action=random_action)
+    print(random_action)
+
     multiloop_control = STEPMultiloopPControl(F4_setpoint=130.00, P_setpoint=2850.0, cA3_setpoint=0.63, dt=step.dt(), process=step)
     data, metadata = run(step, controller=multiloop_control, time_target=30)
     show(data, metadata=metadata)

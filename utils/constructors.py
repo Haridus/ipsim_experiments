@@ -75,28 +75,6 @@ def create_pid_control_ReactorEnv(config):
     return ReactorPID(Kis=[100.0, 0.5], steady_state=[0.8778252, 0.659], steady_action=[26.85, 0.1], min_action=[15.0, 0.05], max_action=[35.0, 0.2])
 
 #---------------------------------------------------------------------------------
-class EvaluationDistillationColumnFeed(ProcessNode):
-    O  = Outputs( ("feed", "x",) )
-    
-    def __init__(self, name, x_feed_data):
-        import scipy
-        import itertools
-        super().__init__(name)
-        
-        self.x_feed = itertools.cycle(x_feed_data)
-        self.x_feed_f = lambda: next(self.x_feed)
-
-        self. i = 0
-
-    def _evaluate(self):
-        if (self._model is None) or (self._model.time() != self._current_time):
-            self._results.clear()
-
-        if not self._results:
-            self.set_result("x", self.x_feed_f())
-            self.set_result("feed", 1)
-            self._current_time = self._model.time()
-
 def create_env_DistillationColumn(config):
     MAX_OBSERVATIONS = [1.0,]  
     MIN_OBSERVATIONS = [1e-08,]
@@ -128,21 +106,11 @@ def create_env_DistillationColumn(config):
                                      , dt=1
                                      , init_state=init_state)
     
-        if config.get("eval_mode", False):
-            import pandas as pd
-            df = pd.read_csv('DC_IndustrialControlAlgorithm_data.csv')
-            evaluation_x_feed = df['x_Feed'].to_numpy()
-            evaluation_feed_node = EvaluationDistillationColumnFeed('Feed', evaluation_x_feed)
-            
-            process.add_node(evaluation_feed_node)
-            process.bond_nodes("DistillationColumn","feed","Feed","feed")
-            process.bond_nodes("DistillationColumn","x_feed","Feed","x")
-            
-        else:
-            #skip some steps to simulate random state
-            u = [3,] 
-            for _ in range(random.randint(0,300)):
-                process.step(action = u)
+
+        #skip some steps to simulate random state
+        u = [3,] 
+        for _ in range(random.randint(0,300)):
+            process.step(action = u)
 
         return process
            
@@ -172,70 +140,46 @@ def create_pid_conrol_DistillationColumn(config):
     return control
 
 #---------------------------------------------------------------------------------
-def create_env_STEP(config):
+def create_env_STEP(config):    
+    MAX_OBSERVATIONS = [1.0, 200, 3000]  #cA3, F4, P
+    MIN_OBSERVATIONS = [1e-08, 1e-08, 2500]
+    MAX_ACTIONS = [1.0, 1.0, 1.0] 
+    MIN_ACTIONS = [1e-08, 1e-08,1e-08]
+    STEADY_OBSERVATIONS = [0.63, 130.0, 2850.0]
+    STEADY_ACTIONS = [26.85, 0.1]
+    ERROR_REWARD = 0 #-1000.0
+
     def process_model_creator( dt = config.get("sampling_time", 0.1), initial_state = None ):
-        from ipsim.models import STEP
+        from ipsim.models import STEP, STEPFlow
 
         def step_observer(model, state):
-            f1 = state['Sensorf1']['f1'] #1
-            f2 = state['Sensorf2']['f2'] #1
             F3 = state['SensorF3']['F3'] #3
             F4 = state['SensorF4']['F4'] #2
-            Vl = state['SensorVl']['Vl'] #1
             P  = state['SensorP']['P']   #1
-            X  = state['SensorX']['X']   #4
+            
+            return np.array([F3.Comp[STEPFlow.A], F4.F, P, ])
+        observer = step_observer
 
-            return [ X[0], X[1], X[2], X[3]
-                   , f1, f2, F3.F, F4.F
-                   , F3.Comp[0], F3.Comp[1], F3.Comp[2]
-                   , P, Vl ]
-        
-        def npobserver(model, state):
-            return np.array(step_observer(model,state))
-    
-        manipulator = ProcessModel.make_common_manipulator([("ValvesControl","X"), ])
+        def step_manipulator(model, action):
+            uX = nodes = model.nodes()["ValvesControl"].value("X")
+            uX[0] = action[0]
+            uX[1] = action[1]
+            uX[2] = action[2]
+
+        manipulator = step_manipulator
+
         solver = lambda f, ts, x, u, p: solve_ivp(f, ts, x, args = (u, p, ), method='LSODA')
+        process =  STEP(solver=solver, observer=observer, manipulator=manipulator, dt=0.1)
+        for _ in range(100): # to stabelize output on steady state
+            process.step()
 
-        process = STEP(  solver = solver
-                , observer = step_observer
-                , manipulator = manipulator
-                , init_state = initial_state)
-        
+        if(initial_state is not None):
+            import random as rnd # set random positions of coltrol valves 
+            random_action = [rnd.randrange(40,60)/100.0, rnd.randrange(40,60)/100.0, rnd.randrange(40,60)/100.0]
+            process.step(action=random_action)
+
         return process
-
-    MAX_OBSERVATIONS = [ 1.0 #X1
-                       , 1.0 #X2
-                       , 1.0 #X3
-                       , 1.0 #X4
-                       , 330.46 #f1
-                       , 22.46  #f2
-                       , 350    #F3 
-                       , 350    #F4
-                       , 1.0    #aF3
-                       , 1.0    #bF3
-                       , 1.0    #cF3
-                       , 3000   #P
-                       , 1.0]   #Vl
-    MIN_OBSERVATIONS = [ 1e-08 #X1
-                       , 1e-08 #X2
-                       , 1e-08 #X3
-                       , 1e-08 #X4
-                       , 1e-08 #f1
-                       , 1e-08  #f2
-                       , 1e-08    #F3 
-                       , 1e-08    #F4
-                       , 1e-08    #aF3
-                       , 1e-08    #bF3
-                       , 1e-08    #cF3
-                       , 1e-08   #P
-                       , 1e-08]   #Vl
-    
-    MAX_ACTIONS = [1.0, 1.0, 1.0, 1.0] 
-    MIN_ACTIONS = [1e-08, 1e-08, 1e-08, 1e-08]
-    STEADY_OBSERVATIONS = [0.8778252, 51.34660837, 0.659]
-    STEADY_ACTIONS = [26.85, 0.1]
-    ERROR_REWARD = -10000.0
-
+           
     env = EnvGym(  normalize=config.get("normalize", False)
                  , dense_reward=config.get("dense_reward", True)
                  , debug_mode= config.get("debug_mode", False)
@@ -243,7 +187,7 @@ def create_env_STEP(config):
                  , initial_state_deviation_ratio = config.get("initial_state_deviation_ratio", 0.3)
                  , sampling_time = config.get("sampling_time", 0.1)
                  , max_steps = config.get("initial_state_deviation_ratio", 100)
-                 , action_dim = 2
+                 , action_dim = 3
                  , observation_dim = 3
                  , max_observations=MAX_OBSERVATIONS
                  , min_observations=MIN_OBSERVATIONS
@@ -255,3 +199,9 @@ def create_env_STEP(config):
                  , np_dtype=np.float32
                  , process_model_constructor=process_model_creator)
     return env
+
+def create_pid_conrol_STEP(config):    
+    from controls.STEP import STEPMultiloopPControl 
+    env = config.get('process_model_obj')
+    control =  STEPMultiloopPControl(F4_setpoint=130.00, P_setpoint=2850.0, cA3_setpoint=0.63, dt = 0.1, process=env)
+    return control
