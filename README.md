@@ -9,7 +9,9 @@ The repository is organized as follows:
 * The __pretrained__ directory contains pretrained models obtained during experiments. It contains subdirectories for each of the processes being studied, with online and offline subdirectories containing models obtained using online and offline RL approaches, respectively. The DistillationColumn_ subdirectory contains the _foreighn_ subdirectory, which contains data from our industrial partners' control algorithm running on the DistillationColumn process model. The control algorithm itself cannot be disclosed for the privacy reasons. The __pretrained__ moved from GitHub repo because of size restrictions but availible on [disk](https://drive.google.com/drive/folders/1rTukAjcuvKCRA0lzozWqcSr2EraS6aBm?usp=sharing)  
 * The root directory contains the main scripts for preparing data for offline training, the training itself both offline and online, scripts for testing the obtained models within the predefined scenarios for each process, as well as settings files for each of the processes being studied. Also the root directory contains .ipynb notebooks that runs evaluation scripts on pretrained models obtained within the study. 
  
- ## Dependencies
+## Dependencies
+Python 3.9.13 is used for experiments. You will also need git since requirements.txt has links to github projects as dependencies.
+
 The [IPSim](https://github.com/Haridus/ipsim) framework used in the study aims to maintain a minimum number of external dependencies. This work uses proven RL frameworks compatible with the OpenAI gym/gymnasium standard, such as d3rlpy and ray, which themselves contain a large number of dependencies and are sensitive to both the PC environment and the Python environment on which they are executed. Therefore, the dependencies used in the study are collected in the __requirements.txt__ file attached to the repository in the root directory.
 
 The modified SMPL frameword used as basis for wrapping of industrial process simulators to OpenAI gym/gymnasium style enviroments. The base implementation of [SMPL](https://github.com/Mohan-Zhang-u/smpl) doesn't cover all requirement (e.g. proper normalization routines) for the study. Thats why, the our modified SMPL framework already included in __mgym__ directory and don't need explicit import.
@@ -18,20 +20,13 @@ The modified SMPL frameword used as basis for wrapping of industrial process sim
 It is recommended to install all dependencies in a separate [.venv](https://docs.python.org/3/library/venv.html) space using the provided __requirements.txt__ file as follows:
 
 ```
-> @venv_scripts_path@/pip install -r requirements.txt
+> pip install -r requirements.txt
 ```
 
 Used ray==1.9.1 require torch of particular versions. To properly setup torch use following pip command within used venv
 ```
-> @venv_scripts_path@/pip install torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu113
+> pip install torch==1.10.1 torchvision==0.11.2 torchaudio==0.10.1 --index-url https://download.pytorch.org/whl/cu113 
 ```
-
-Within venv space organize directories as follow:
-```
-+ ipsim
-+ ipsim_experiments
-```
-to not to install ipsim and ipsim_experiments to other venv dependancies.  
 
 ## Running experiments
 To run training configure particular process .yaml settings file and run coresponding scripts.
@@ -58,4 +53,6 @@ online_pretrained_models_assessment.py -p @ProcessName@
 ```
 The models assesment scripts also allow specify particular algorithms to show results by --algs option. List of algs coresponds to list in offlineRL_training and onlineRL_training.
 
-Also result for all algorithms and process models under investigation can be seen in .ipynb notebooks in __pretrained__ directory.
+To evaluate pretrained models you need place data from [disk](https://drive.google.com/drive/folders/1rTukAjcuvKCRA0lzozWqcSr2EraS6aBm?usp=sharing) to __pretrained__ directory, which needs to be created in the __root__ directory of the current project.
+
+Also result for all algorithms and process models under investigation can be seen in .ipynb notebooks in __root__ directory.
