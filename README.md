@@ -23,9 +23,16 @@ It is recommended to install all dependencies in a separate [.venv](https://docs
 > pip install -r requirements.txt
 ```
 
-Used ray==1.9.1 require torch of particular versions. To properly setup torch use following pip command within used venv
+Used ray==1.9.1 require torch of particular versions. To properly setup torch use following pip command within used venv:
+
+For Windows
 ```
 > pip install torch==1.10.1 torchvision==0.11.2 torchaudio==0.10.1 --index-url https://download.pytorch.org/whl/cu113 
+```
+
+For MacOS:
+```
+> pip install torch==1.10.1 torchvision==0.11.2 torchaudio==0.10.1
 ```
 
 ## Running experiments
