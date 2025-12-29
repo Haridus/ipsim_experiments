@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 
 import os
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), "../../../smpl")) 
 
 from smpl.envs.utils import smplEnvBase, TorchDatasetFromD4RL
 from mzutils import mkdir_p, normalize_spaces, denormalize_spaces, SimplePriorityQueue

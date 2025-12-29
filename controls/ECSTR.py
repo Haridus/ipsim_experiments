@@ -1,6 +1,5 @@
 import os
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), "../../../ipsim")) 
 
 from ipsim import *
 from ipsim.models import ECSTR_A0_Node, ECSTR_A0

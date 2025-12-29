@@ -1,13 +1,15 @@
  ## Introduction
-This repository presents materials on numerical experiments for the article "". The experiments are aimed at systematically studying and comparing the performance of traditional industrial process control algorithms and algorithms obtained using reinforcement learning (RL).
+This repository presents materials on numerical experiments for the article "IPSim: Industrial Processes Simulator for Benchmarking
+Reinforcement Learning-based Control". The experiments are aimed at systematically studying and comparing the performance of traditional industrial process control algorithms and algorithms obtained using reinforcement learning (RL).
 
-The repository is organized as follows:
-
+## Repository structure
+The presented repository has the following structure:
 * The __control__ directory contains conventional control algorithms in the form adopted for the study.
 * The __mgym__ directory contains bindings for obtaining OpenAI gym/gymnasium environments from the industrial process simulators considered in the study, as well as standard settings for the RL algorithms used in the study.
 * The __utils__ directory contains various utilities to provide template approach for generating data, working with supplymentary directoryes and others. The _constructors_ script within directory contains methods for creating OpenAI gym/gymnasium compatible environments tools for particular process.
-* The __pretrained__ directory contains pretrained models obtained during experiments. It contains subdirectories for each of the processes being studied, with online and offline subdirectories containing models obtained using online and offline RL approaches, respectively. The DistillationColumn_ subdirectory contains the _foreighn_ subdirectory, which contains data from our industrial partners' control algorithm running on the DistillationColumn process model. The control algorithm itself cannot be disclosed for the privacy reasons. The __pretrained__ moved from GitHub repo because of size restrictions but availible on [disk](https://drive.google.com/drive/folders/1rTukAjcuvKCRA0lzozWqcSr2EraS6aBm?usp=sharing)  
-* The root directory contains the main scripts for preparing data for offline training, the training itself both offline and online, scripts for testing the obtained models within the predefined scenarios for each process, as well as settings files for each of the processes being studied. Also the root directory contains .ipynb notebooks that runs evaluation scripts on pretrained models obtained within the study. 
+* The __config__ directory contains configuration files with settings for online and offline RL training on the environments used in the study.
+* The __scripts__ directory contains scripts for data generation, online and offline RL training and evaluation.  
+* The __data__ directory contains a single file with _DC_IndustrialControlAlgorithm_data.csv_ data obtained by using an industrial control algorithm on the DistillationColumn simulator provided by industrial partners.
  
 ## Dependencies
 Python 3.9.13 is used for experiments. You will also need git since requirements.txt has links to github projects as dependencies.

@@ -1,7 +1,7 @@
 seed: 42
 num_of_seeds: 1
 process_name: 'ECSTR_S0'
-normalize: False
+normalize: True
 dense_reward: True
 debug_mode: False
 
@@ -23,7 +23,7 @@ num_gpus: 1
 num_workers: 1
 # num_gpus_per_worker: 0.1
 train_iter: 2000
-online_alg: 'sac'
+online_alg: 'impala'
 online_logs_location: "ray"
 online_plt_dir: "plt_results"
 online_resylts: "ray_results"
@@ -49,6 +49,6 @@ eval_num_of_initial_state: 1000
 # env specific configs
 reward_on_steady: True
 reward_on_absolute_efactor: False
-compute_diffs_on_reward: True
+compute_diffs_on_reward: False
 standard_reward_style: 'setpoint'
-initial_state_deviation_ratio: 0.1
+initial_state_deviation_ratio: 0.5
