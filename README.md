@@ -2,6 +2,11 @@
 This repository presents materials on numerical experiments for the article "IPSim: Industrial Processes Simulator for Benchmarking
 Reinforcement Learning-based Control". The experiments are aimed at systematically studying and comparing the performance of traditional industrial process control algorithms and algorithms obtained using reinforcement learning (RL).
 
+The study use flexible Python-based framework for modeling dynamic industrial processes [ipsim](https://github.com/Haridus/ipsim) and a methodology for packaging these models into OpenAI Gym-compatible environments, enabling the integration of reinforcement learning (RL) algorithms. The framework was employed to create simulators for the Exothermic Continuous Stirred-Tank Reactor, a Distillation Column, and the Simplified Tennessee Eastman Process. These simulators facilitated a comparative analysis between traditional PID control algorithms and advanced control strategies derived from both online and offline RL techniques.
+
+The general idea of ​​the framework can be illustrated in the figure. A node-based simulator, using sensor nodes, provides results to an AI algorithm, which can control the process by influencing manipulated variables via input nodes.
+![Concept](./images/Concept.png)
+
 ## Repository structure
 The presented repository has the following structure:
 * The __config__ directory contains configuration files with settings for online and offline RL training on the environments used in the study.
