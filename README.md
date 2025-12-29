@@ -46,13 +46,22 @@ For MacOS:
 To run training configure particular process .yaml settings file and run coresponding scripts.
 
 ### Offline RL 
+For offline training, you first need to generate data for the desired process
+
 ```
 offlineRL_data_generation.py -p @ProcessName@
+```
+
+Then run the training as follows. 
+```
 offlineRL_training.py -p @ProcessName@
 ```
+Specific training parameters can be changed using the process configuration file in the __configs__ folder.
+
 By default offlineRL_training try all used RL algorithms ('COMBO', 'MOPO', 'AWAC', 'DDPG', 'TD3', 'BC', 'CQL', 'PLAS', 'PLASWithPerturbation', 'BEAR', 'SAC', 'BCQ', 'CRR'). Partifular algorithms can be specified by --algs option of offlineRL_training script.
 
 ### Online RL
+For online training run the training as follows
 ```
 onlineRL_training.py -p @ProcessName@
 ```
