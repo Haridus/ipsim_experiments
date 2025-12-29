@@ -151,6 +151,74 @@ def case_env_DistillationColumn(algorithms, config):
 
     return processes_data, metrics_calculators
 
+def show_metrics_env_STEP(algs_data):
+    fig = plt.figure(figsize=(12,3))
+    plt.subplot(1, 4, 1)
+    for alg_name in algs_data:
+        _data = algs_data[alg_name]
+        plt.plot(_data["X1"], label=alg_name)
+        plt.plot(_data["X2"])
+        plt.plot(_data["X3"])
+    plt.ylim(0,1)
+    
+    plt.subplot(1, 4, 2)
+    for alg_name in algs_data:
+        _data = algs_data[alg_name]
+        plt.plot(_data["yA3"])
+    plt.ylim(0,1)
+
+    plt.subplot(1, 4, 3)
+    for alg_name in algs_data:
+        _data = algs_data[alg_name]
+        plt.plot(_data["F4"])
+    plt.ylim(50,150)
+
+    plt.subplot(1, 4, 4)
+    for alg_name in algs_data:
+        _data = algs_data[alg_name]
+        plt.plot(_data["P"])
+    plt.ylim(2500,3000)
+
+    plt.gca().legend([_ for _ in algs_data], loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.show()
+
+def case_env_STEP(algorithms, config):
+    setpoints  = np.array([0.63, 130.0, 2850.0, ],dtype=np.float32)
+        
+    processes_data = {}
+    metrics_calculators = {}
+    for alg, alg_name in algorithms:
+        _env = EnvFactory.create(config=config)
+        _state = _env.reset(initial_state = [])
+    
+        processes_data[alg_name] = None
+        metrics_calculators[alg_name] = MetricsCalculator(setpoints=setpoints, dt = 0.1)
+        _mc = metrics_calculators[alg_name]
+
+        iterations = 300    
+        _process_data = {"X1":[], "X2":[], "X3":[], "yA3":[], "F4":[], "P":[], }
+        for _ in range(iterations):
+            _u = alg.predict(_state)
+            dn_u = _env.denormalize_actions(_u) 
+            _process_data["X1"].append(dn_u[0])
+            _process_data["X2"].append(dn_u[1])
+            _process_data["X3"].append(dn_u[2])
+            
+            _observation, _reward, _done, _info = _env.step(action=_u)
+            _state = _observation
+            
+            dn_s = _env.denormalize_observations(_state)
+            _mc.update(dn_s)
+            
+            _process_data["yA3"].append(dn_s[0])
+            _process_data["F4"].append(dn_s[1])
+            _process_data["P"].append(dn_s[2])
+        
+        processes_data[alg_name] = _process_data
+        print(f"{alg_name}: process metrics: {_mc.ISF()}; {_mc.IAE()}; {_mc.ITAE()}; {_mc.ITSH()};")
+
+    return processes_data, metrics_calculators
+
 #======================================================================
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -194,11 +262,14 @@ if __name__ == "__main__":
                     return create_env_ReactorEnv(config)
                 if config['process_name'] == 'DistillationColumn':
                     return create_env_DistillationColumn(config)
+                if config['process_name'] == 'STEP':
+                    return create_env_STEP(config)
                 raise Exception('unknown processs name')
     
             register_env("ECSTR_S0", env_creator)
             register_env("ReactorEnv", env_creator)
             register_env("DistillationColumn", env_creator)
+            register_env("STEP", env_creator)
 
             checkpoint_path = os.path.join(logdir,alg_name)
             checkpoint_path = os.path.join(checkpoint_path,'best')
@@ -218,7 +289,9 @@ if __name__ == "__main__":
                 _process_data, _metrics_calculators = case_env_DistillationColumn(algorithms=algorithms, config=config)
             if args.process in ['ECSTR_S0','ReactorEnv']:
                 _process_data, _metrics_calculators = case_env_ECSTR_S0_ReactorEnv(algorithms=algorithms, config=config)
-            
+            if args.process == 'STEP':
+                _process_data, _metrics_calculators = case_env_STEP(algorithms=algorithms, config=config)
+
             processes_data[alg_name] = _process_data[alg_name]
             metrics_calculators[alg_name] = _metrics_calculators[alg_name]
         
@@ -233,3 +306,5 @@ if __name__ == "__main__":
         show_env_DistillationColumn(processes_data)
     if args.process in ['ECSTR_S0','ReactorEnv']:
         show_metrics_env_ECSTR_S0_ReactorEnv(processes_data)
+    if args.process in ['STEP']:
+        show_metrics_env_STEP(processes_data)
