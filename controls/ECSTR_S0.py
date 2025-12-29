@@ -1,3 +1,8 @@
+# -----------------------------------------------------------------------------
+# The implementation of the PID class was adapted from
+# https://github.com/Mohan-Zhang-u/smpl/blob/main/smpl/envs/reactorenv.py
+# -----------------------------------------------------------------------------
+
 import os
 import sys
 

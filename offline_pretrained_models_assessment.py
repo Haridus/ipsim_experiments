@@ -1,14 +1,13 @@
 #====================================================================
-from utils.utils import *
-from utils.data_generation import *
-from utils.constructors import *
-from mgym.algorithms import *
+from utils.utils import EnvFactory, ControlFactory, MetricsCalculator, load_config_yaml
+from utils.constructors import create_env_ECSTR_S0, create_pid_conrol_ECSTR_S0, create_env_ReactorEnv, create_pid_control_ReactorEnv, create_env_DistillationColumn, create_pid_conrol_DistillationColumn, create_env_STEP, create_pid_conrol_STEP
+from mgym.algorithms import RLModel
 
-import argparse
-import codecs
-import copy
-import csv
+import matplotlib.pyplot as plt
 from copy import deepcopy
+import numpy as np
+import argparse
+import os
 
 #====================================================================
 EnvFactory.constructors['ECSTR_S0'] = create_env_ECSTR_S0
@@ -19,6 +18,9 @@ ControlFactory.constructors['ReactorEnv'] = create_pid_control_ReactorEnv
 
 EnvFactory.constructors['DistillationColumn'] = create_env_DistillationColumn
 ControlFactory.constructors['DistillationColumn'] = create_pid_conrol_DistillationColumn
+
+EnvFactory.constructors['STEP'] = create_env_STEP
+ControlFactory.constructors['STEP'] = create_pid_conrol_STEP
 
 #====================================================================      
 def ECSTR_S0_show_data(algs_data):
@@ -71,7 +73,7 @@ def assess_ECSTR_S0(config, algs):
     for alg_name in algs :
         algorithms.append( (RLModel(alg_name, logdir), alg_name, config['normalize'], ) )
 
-    init_state = [0.2, 25, 0.2]
+    init_state = [0.1, 25, 0.1]
     setpoints  = [0.8778252, 51.34660837, 0.659]
 
     processes_data = {}
@@ -170,33 +172,127 @@ def assess_DistillationColumn(config, algs):
                 
     DistillationColumn_show_data(processes_data)
 
+def STEP_show_data(algs_data):
+    fig = plt.figure(figsize=(12,3))
+    plt.subplot(1, 4, 1)
+    for alg_name in algs_data:
+        _data = algs_data[alg_name]
+        plt.plot(_data["X1"], label=alg_name)
+        plt.plot(_data["X2"])
+        plt.plot(_data["X3"])
+    plt.ylim(0,1)
+    
+    plt.subplot(1, 4, 2)
+    for alg_name in algs_data:
+        _data = algs_data[alg_name]
+        plt.plot(_data["yA3"])
+    plt.ylim(0,1)
+
+    plt.subplot(1, 4, 3)
+    for alg_name in algs_data:
+        _data = algs_data[alg_name]
+        plt.plot(_data["F4"])
+    plt.ylim(50,150)
+
+    plt.subplot(1, 4, 4)
+    for alg_name in algs_data:
+        _data = algs_data[alg_name]
+        plt.plot(_data["P"])
+    plt.ylim(2500,3000)
+
+    plt.gca().legend([_ for _ in algs_data], loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.show()
+
+
+def STEP_assess(config, algs):
+    config['normalize'] = False
+    config['compute_diffs_on_reward'] = False
+    
+    _env = EnvFactory.create(config=config)
+    _env.reset(initial_state=[])
+    config['process_model_obj'] = _env
+    control = ControlFactory.create(config=config)
+
+    env_name = config["process_name"]
+    location = "offline"
+    logdir = os.path.join(os.path.join(os.path.join(".","pretrained"), f"{env_name}"),f"{location}")
+
+    algorithms = []
+    algorithms.append( (control, 'baseline', config['normalize'], ) )
+    for alg_name in algs :
+        algorithms.append( (RLModel(alg_name, logdir), alg_name, config['normalize'], ) )
+
+    setpoints  = np.array([0.63, 130.0, 2850.0, ],dtype=np.float32)
+    
+    processes_data = {}
+    metrics_calculators = {}
+    for alg, alg_name, normalize in algorithms:
+        if alg_name != 'baseline':
+            _env = EnvFactory.create(config=config)
+            _env.reset(initial_state=[])
+
+        processes_data[alg_name] = None
+        metrics_calculators[alg_name] = MetricsCalculator(setpoints=setpoints, dt = 1)
+        _mc = metrics_calculators[alg_name]
+
+        iterations = 500    
+        _process_data = {"X1":[], "X2":[], "X3":[], "yA3":[], "F4":[], "P":[], }
+        _state = _env.process_model.step()
+
+        for _ in range(iterations):
+            _u = alg.predict(_state)
+            _process_data["X1"].append(_u[0])
+            _process_data["X2"].append(_u[1])
+            _process_data["X3"].append(_u[2])
+            
+            _mc.update(_state)
+
+            _observation, _reward, _done, _info = _env.step(action=_u)
+            _state = _observation
+            
+            _process_data["yA3"].append(_state[0])
+            _process_data["F4"].append(_state[1])
+            _process_data["P"].append(_state[2])
+
+        print(f"{alg_name}: process metrics: ISF={_mc.ISF()}; IAE={_mc.IAE()}; ITAE={_mc.ITAE()}; ITSH{_mc.ITSH()};")        
+        processes_data[alg_name] = _process_data
+
+    STEP_show_data(processes_data)
+
 #======================================================================
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p','--process', type = str, default = 'ECSTR_S0', help = 'Process model name')
+    
+    #specify particular --process and --algs
+    parser.add_argument('-p','--process', type = str, default = 'STEP', help = 'Process model name')
     parser.add_argument('-w','--work_dir', type = str, default=os.path.dirname(__file__), help = 'Working directory')
-    parser.add_argument('-a','--algs', nargs='+', default=[ 'BC'
+    parser.add_argument('-a','--algs', nargs='+', default=[
+                                                             'COMBO'
+                                                           #, 'MOPO'
+                                                           #, 'BC'
                                                            , 'CQL'
-                                                           , 'PLAS'
-                                                           , 'PLASWithPerturbation'
+                                                           #, 'PLAS'
+                                                           #, 'PLASWithPerturbation'
                                                            , 'BEAR'
-                                                           , 'SAC'
+                                                           #, 'SAC'
                                                            , 'BCQ'
                                                            , 'CRR'
                                                            , 'AWAC'
-                                                           , 'DDPG'
-                                                           , 'TD3'
-                                                           , 'COMBO'
-                                                           , 'MOPO'
+                                                           #, 'DDPG'
+                                                           #, 'TD3'
                                                            ]
                                                            , help = 'list of used algorithms')    
     
     args = parser.parse_args()
-    os. chdir(args.work_dir)
+    os.chdir(args.work_dir)
+
     project_title = args.process
-    config = load_config_yaml(args.work_dir, args.process)
+    config = load_config_yaml("configs", args.process)
 
     if args.process == 'ECSTR_S0':
         assess_ECSTR_S0(config=config, algs=args.algs)
     if args.process == 'DistillationColumn':
         assess_DistillationColumn(config=config, algs=args.algs)
+    if args.process == 'STEP':
+        STEP_assess(config=config, algs=args.algs)
+    

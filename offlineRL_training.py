@@ -1,14 +1,17 @@
 #================================================================
-from utils.utils import *
-from utils.data_generation import *
-from utils.constructors import *
-from mgym.algorithms import *
+from utils.utils import EnvFactory, ControlFactory, AlgorithmsFactory, SeedData, load_config_yaml
+from utils.constructors import create_env_ECSTR_S0, create_pid_conrol_ECSTR_S0, create_env_ReactorEnv, create_pid_control_ReactorEnv, create_env_DistillationColumn, create_pid_conrol_DistillationColumn, create_env_STEP, create_pid_conrol_STEP
+from utils.data_generation import form_dataset_location_path, form_logs_location_path
+from mgym.algorithms import setup_alg_CQL, setup_alg_PLAS, setup_alg_PLASWithPerturbation, setup_alg_DDPG, setup_alg_BC, setup_alg_TD3, setup_alg_BEAR, setup_alg_SAC, setup_alg_BCQ, setup_alg_CRR, setup_alg_AWAC, setup_alg_COMBO, setup_alg_MOPO
 
 import argparse
 import pickle
 import d3rlpy
 import wandb
 import shutil
+import random
+import os
+import numpy as np
 
 #================================================================
 EnvFactory.constructors['ECSTR_S0'] = create_env_ECSTR_S0
@@ -19,6 +22,9 @@ ControlFactory.constructors['ReactorEnv'] = create_pid_control_ReactorEnv
 
 EnvFactory.constructors['DistillationColumn'] = create_env_DistillationColumn
 ControlFactory.constructors['DistillationColumn'] = create_pid_conrol_DistillationColumn
+
+EnvFactory.constructors['STEP'] = create_env_STEP
+ControlFactory.constructors['STEP'] = create_pid_conrol_STEP
 
 #-----------------------------------------------------------------------------
 AlgorithmsFactory.constructors["CQL"] = setup_alg_CQL
@@ -53,9 +59,7 @@ if __name__ == "__main__":
     parser.add_argument('-p','--process', type = str, default = 'DistillationColumn', help = 'Process model name')
     parser.add_argument('-w','--work_dir', type = str, default=os.path.dirname(__file__), help = 'Working directory')
     parser.add_argument('-s','--seed', type = int, default=42, help = 'Seed value') 
-    parser.add_argument('-a','--algs', nargs='+', default=[  'COMBO'
-                                                           , 'MOPO'
-                                                           , 'AWAC'
+    parser.add_argument('-a','--algs', nargs='+', default=[  'AWAC'
                                                            , 'DDPG'
                                                            , 'TD3'
                                                            , 'BC'
@@ -66,19 +70,29 @@ if __name__ == "__main__":
                                                            , 'SAC'
                                                            , 'BCQ'
                                                            , 'CRR'
+                                                           , 'COMBO'
+                                                           , 'MOPO'
                                                            , ], help = 'list of used algorithms')    
     args = parser.parse_args()
 
     os.chdir(args.work_dir)
     project_title = args.process
-    config = load_config_yaml(args.work_dir, args.process)
+    config = load_config_yaml("configs", args.process)
+    
     config['normalize'] = False
-    config['compute_diffs_on_reward'] = True
+    config['compute_diffs_on_reward'] = False
+
+    if args.process in ['ReactorEnv', 'ECSTR_S0']:
+        config['normalize'] = False
+        config['compute_diffs_on_reward'] = True
 
     seed = config.get('seed', args.seed)
     config['seed'] = seed
     seeds = init_seeds(config)
     env = EnvFactory.create(config=config)
+
+    if args.process in ['ECSTR_S0']:
+        env.old_reward_f = True
 
     training_dataset_location = os.path.join(form_dataset_location_path(config), config['training_dataset'])
     eval_dataset_location = os.path.join(form_dataset_location_path(config), config['eval_dataset'])
@@ -88,6 +102,8 @@ if __name__ == "__main__":
         training_dataset_pkl = pickle.load(f)
     with open(eval_dataset_location, 'rb') as f:
         eval_dataset_pkl = pickle.load(f)   
+
+    print(training_dataset_pkl)
 
     dataset = d3rlpy.dataset.MDPDataset(training_dataset_pkl['observations'], training_dataset_pkl['actions'], training_dataset_pkl['rewards'], training_dataset_pkl['terminals'])
     eval_dataset = d3rlpy.dataset.MDPDataset(eval_dataset_pkl['observations'], eval_dataset_pkl['actions'], eval_dataset_pkl['rewards'], eval_dataset_pkl['terminals'])

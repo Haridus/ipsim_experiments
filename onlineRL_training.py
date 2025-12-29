@@ -1,14 +1,11 @@
 #================================================================
-from utils.utils import *
-from utils.constructors import *
-from mgym.algorithms import *
+from utils.utils import EnvFactory, ControlFactory, AlgorithmsFactory, load_config_yaml, mkdir
+from utils.constructors import create_env_ECSTR_S0, create_pid_conrol_ECSTR_S0, create_env_ReactorEnv, create_pid_control_ReactorEnv, create_env_DistillationColumn, create_pid_conrol_DistillationColumn, create_env_STEP, create_pid_conrol_STEP
+from mgym.algorithms import setup_alg_ppo, setup_alg_pg, setup_alg_ddpg, setup_alg_apex_ddpg, setup_alg_a3c, setup_alg_ars, setup_alg_sac, setup_alg_impala, setup_alg_a2c
 
+import os
 import argparse
 import wandb
-
-import yaml
-import wandb
-import numpy as np
 from datetime import datetime
 import pandas as pd
 import json
@@ -33,6 +30,9 @@ ControlFactory.constructors['ReactorEnv'] = create_pid_control_ReactorEnv
 EnvFactory.constructors['DistillationColumn'] = create_env_DistillationColumn
 ControlFactory.constructors['DistillationColumn'] = create_pid_conrol_DistillationColumn
 
+EnvFactory.constructors['STEP'] = create_env_STEP
+ControlFactory.constructors['STEP'] = create_pid_conrol_STEP
+
 #-------------------------------------------------------------------
 AlgorithmsFactory.constructors["ppo"] = setup_alg_ppo
 AlgorithmsFactory.constructors["pg"] = setup_alg_pg # fail to train with error category.encode("ascii") + b"/" + key.encode("ascii"))  AttributeError: 'property' object has no attribute 'encode'
@@ -55,6 +55,7 @@ if __name__ == "__main__":
     global ACTUAL_DIR
     global ONLINE_PREV_EVALUATE_ON_ENVIRONMENT_SCORER
 
+    #specify particular --process and --algs
     parser = argparse.ArgumentParser()
     parser.add_argument('-p','--process', type = str, default = 'DistillationColumn', help = 'Process model name')
     parser.add_argument('-w','--work_dir', type = str, default=os.path.dirname(__file__), help = 'Working directory')
@@ -88,16 +89,19 @@ if __name__ == "__main__":
             return create_env_ReactorEnv(config)
         if config['process_name'] == 'DistillationColumn':
             return create_env_DistillationColumn(config)
+        if config['process_name'] == 'STEP':
+            return create_env_STEP(config)
         raise Exception('unknown processs name')
     
     register_env("ECSTR_S0", env_creator)
     register_env("ReactorEnv", env_creator)
     register_env("DistillationColumn", env_creator)
+    register_env("STEP", env_creator)
 
     if config['use_tune']:
         with wandb.init(project = config['process_name'], dir=os.path.abspath(log_dir),   sync_tensorboard = True) as run:
             rl_config["env"] = args.process
-            rl_config["num_gpus"] = config.get('num_gpus',1)
+            #rl_config["num_gpus"] = config.get('num_gpus',1)
             rl_config["framework"] = "torch"
             rl_config["num_workers"] = config.get('num_workers',1)
             rl_config["evaluation_num_workers"] = config.get('num_workers',1)

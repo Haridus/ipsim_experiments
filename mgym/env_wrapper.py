@@ -1,3 +1,9 @@
+# -----------------------------------------------------------------------------
+# The implementation of EnvGym was developed based on examples obtained from the https://github.com/Mohan-Zhang-u/smpl/blob/main/smpl/envs. 
+# Additional modifications include the incorporation of proper normalization procedures, 
+# the implementation of default reward functions, and other relevant enhancements to improve performance and stability.
+# -----------------------------------------------------------------------------
+
 #======================================================
 import os
 import json

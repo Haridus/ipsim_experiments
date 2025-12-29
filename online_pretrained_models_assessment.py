@@ -1,40 +1,15 @@
 #====================================================================
-from utils.utils import *
-from utils.data_generation import *
-from utils.constructors import *
-from mgym.algorithms import *
+from utils.utils import EnvFactory, ControlFactory, MetricsCalculator, AlgorithmsFactory,  load_config_yaml
+from utils.constructors import create_env_ECSTR_S0, create_pid_conrol_ECSTR_S0, create_env_ReactorEnv, create_pid_control_ReactorEnv, create_env_DistillationColumn, create_pid_conrol_DistillationColumn, create_env_STEP, create_pid_conrol_STEP
+from mgym.algorithms import setup_alg_ppo, setup_alg_pg, setup_alg_ars, setup_alg_ddpg, setup_alg_apex_ddpg, setup_alg_a3c, setup_alg_sac, setup_alg_impala, setup_alg_a2c, RayAgentWrapper
 
-import argparse
-import codecs
-import copy
-import csv
+import os
 from copy import deepcopy
-
-import ray.rllib.agents.ppo as ppo
-from utils.utils import *
-from utils.constructors import *
-from mgym.algorithms import *
-
+import matplotlib.pyplot as plt
 import argparse
-import wandb
-
-import yaml
-import wandb
 import numpy as np
-from datetime import datetime
-import pandas as pd
-import json
-import argparse
-
 import ray as ray 
-from ray import tune
 from ray.tune.registry import register_env
-from ray.tune.logger import DEFAULT_LOGGERS
-from ray.tune.integration.wandb import WandbLogger
-import pandas as pd
-
-from copy import deepcopy
-
 #====================================================================
 EnvFactory.constructors['ECSTR_S0'] = create_env_ECSTR_S0
 ControlFactory.constructors['ECSTR_S0'] = create_pid_conrol_ECSTR_S0
@@ -44,6 +19,9 @@ ControlFactory.constructors['ReactorEnv'] = create_pid_control_ReactorEnv
 
 EnvFactory.constructors['DistillationColumn'] = create_env_DistillationColumn
 ControlFactory.constructors['DistillationColumn'] = create_pid_conrol_DistillationColumn
+
+EnvFactory.constructors['STEP'] = create_env_STEP
+ControlFactory.constructors['STEP'] = create_pid_conrol_STEP
 
 #------------------------------------------------------
 AlgorithmsFactory.constructors["ppo"] = setup_alg_ppo
@@ -190,7 +168,7 @@ if __name__ == "__main__":
 
     os. chdir(args.work_dir)
     project_title = args.process
-    config = load_config_yaml(args.work_dir, args.process)
+    config = load_config_yaml("configs", args.process)
     env_name = config["process_name"]
     config['normalize'] = True
     config['compute_diffs_on_reward'] = False
@@ -240,7 +218,7 @@ if __name__ == "__main__":
                 _process_data, _metrics_calculators = case_env_DistillationColumn(algorithms=algorithms, config=config)
             if args.process in ['ECSTR_S0','ReactorEnv']:
                 _process_data, _metrics_calculators = case_env_ECSTR_S0_ReactorEnv(algorithms=algorithms, config=config)
-
+            
             processes_data[alg_name] = _process_data[alg_name]
             metrics_calculators[alg_name] = _metrics_calculators[alg_name]
         
@@ -254,4 +232,4 @@ if __name__ == "__main__":
     if args.process == 'DistillationColumn':
         show_env_DistillationColumn(processes_data)
     if args.process in ['ECSTR_S0','ReactorEnv']:
-        show_metrics_env_ECSTR_S0_ReactorEnv(processes_data)   
+        show_metrics_env_ECSTR_S0_ReactorEnv(processes_data)

@@ -1,8 +1,9 @@
 #================================================================
-from utils.utils import *
-from utils.constructors import *
-from utils.data_generation import *
+from utils.utils import EnvFactory, ControlFactory, load_config_yaml
+from utils.constructors import create_env_ECSTR_S0, create_pid_conrol_ECSTR_S0, create_env_ReactorEnv, create_pid_control_ReactorEnv, create_env_DistillationColumn, create_pid_conrol_DistillationColumn, create_env_STEP, create_pid_conrol_STEP
+from utils.data_generation import generate_dataset, save_dataset
 
+import os
 import argparse
 
 EnvFactory.constructors['ECSTR_S0'] = create_env_ECSTR_S0
@@ -14,26 +15,32 @@ ControlFactory.constructors['ReactorEnv'] = create_pid_control_ReactorEnv
 EnvFactory.constructors['DistillationColumn'] = create_env_DistillationColumn
 ControlFactory.constructors['DistillationColumn'] = create_pid_conrol_DistillationColumn
 
+EnvFactory.constructors['STEP'] = create_env_STEP
+ControlFactory.constructors['STEP'] = create_pid_conrol_STEP
+
 #================================================================
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p','--process', type = str, default = 'DistillationColumn', help = 'Process model name')
+
+    #specify particular --process
+    parser.add_argument('-p','--process', type = str, default = 'ECSTR_S0', help = 'Process model name')
     parser.add_argument('-w','--work_dir', type = str, default=os.path.dirname(__file__), help = 'Working directory')
     args = parser.parse_args()
     
     os. chdir(args.work_dir)
 
-    config = load_config_yaml(args.work_dir, args.process)
+    config = load_config_yaml("configs", args.process)
     config['normalize'] = False
     config['compute_diffs_on_reward'] = False
 
-    if args.process == 'ReactorEnv':
+    if args.process in ['ReactorEnv']:
         config['normalize'] = False
         config['compute_diffs_on_reward'] = True
 
     env = EnvFactory.create(config=config)
+    config['process_model_obj'] = env
     control = ControlFactory.create(config=config)
-    
+
     eval_num_of_initial_state = config.get('eval_num_of_initial_state',1000)
     training_num_of_initial_state = config.get('training_num_of_initial_state',1000)
     eval_dataset = generate_dataset(env, control, config, eval_num_of_initial_state )
