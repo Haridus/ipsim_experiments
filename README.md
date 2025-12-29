@@ -4,12 +4,12 @@ Reinforcement Learning-based Control". The experiments are aimed at systematical
 
 ## Repository structure
 The presented repository has the following structure:
+* The __config__ directory contains configuration files with settings for online and offline RL training on the environments used in the study.
 * The __control__ directory contains conventional control algorithms in the form adopted for the study.
+* The __data__ directory contains a single file with _DC_IndustrialControlAlgorithm_data.csv_ data obtained by using an industrial control algorithm on the DistillationColumn simulator provided by industrial partners.
 * The __mgym__ directory contains bindings for obtaining OpenAI gym/gymnasium environments from the industrial process simulators considered in the study, as well as standard settings for the RL algorithms used in the study.
 * The __utils__ directory contains various utilities to provide template approach for generating data, working with supplymentary directoryes and others. The _constructors_ script within directory contains methods for creating OpenAI gym/gymnasium compatible environments tools for particular process.
-* The __config__ directory contains configuration files with settings for online and offline RL training on the environments used in the study.
-* The __scripts__ directory contains scripts for data generation, online and offline RL training and evaluation.  
-* The __data__ directory contains a single file with _DC_IndustrialControlAlgorithm_data.csv_ data obtained by using an industrial control algorithm on the DistillationColumn simulator provided by industrial partners.
+* The root directory contains the main scripts for preparing data for offline training, the training itself both offline and online, scripts for testing the obtained models within the predefined scenarios for each process.
  
 ## Dependencies
 Python 3.9.13 is used for experiments. You will also need git since requirements.txt has links to github projects as dependencies.
@@ -56,12 +56,36 @@ By default offlineRL_training try all used RL algorithms ('ppo', 'sac', 'ars', '
 ## Showing results
 
 ### Pretrainted models
+To evaluate pretrained models you need place data from [disk](https://drive.google.com/drive/folders/1rTukAjcuvKCRA0lzozWqcSr2EraS6aBm?usp=sharing) to __pretrained__ directory, which needs to be created in the __root__ directory of the current project. You can do this manually or use _load_pretrained_models.py_, which will download models and unzip them to __pretrained__ directory. Just call:
+```
+load_pretrained_models.py
+```
+To evaluate offline models call:
+
 ```
 offline_pretrained_models_assessment.py -p @ProcessName@
+```
+To evaluate online models call:
+```
 online_pretrained_models_assessment.py -p @ProcessName@
 ```
+
 The models assesment scripts also allow specify particular algorithms to show results by --algs option. List of algs coresponds to list in offlineRL_training and onlineRL_training.
 
-To evaluate pretrained models you need place data from [disk](https://drive.google.com/drive/folders/1rTukAjcuvKCRA0lzozWqcSr2EraS6aBm?usp=sharing) to __pretrained__ directory, which needs to be created in the __root__ directory of the current project.
+### Exothermic Continuous Tank Reactor (ECSTR) result
+Exothermic Continuous Tank Reactor (ECSTR) result for offline RL models is presented on image
+![ECSTR_offline_best](./images/ECSTR_S0_offline_best.png)
 
-Also result for all algorithms and process models under investigation can be seen in .ipynb notebooks in __root__ directory.
+Exothermic Continuous Tank Reactor (ECSTR) result for online RL models is presented on image
+![ECSTR_offline_best](./images/ECSTR_S0_online_best.png)
+
+### Distillation Column (DC) result
+Distillation Column (DC) result for offline RL models is presented on image
+![DC_offline_best](./images/DC_offline_best.png)
+
+Distillation Column (DC) result for online RL models is presented on image
+![DC_offline_best](./images/DC_online_best.png)
+
+### Simplified Tennessee Eastman Process (STEP) result
+Simplified Tennessee Eastman Process (STEP) result for offline RL models is presented on image
+![STEP_offline_best](./images/STEP_offline_best.png)
