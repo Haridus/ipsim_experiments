@@ -15,7 +15,6 @@ from gym import spaces
 import matplotlib.pyplot as plt
 
 import os
-import sys
 
 from smpl.envs.utils import smplEnvBase, TorchDatasetFromD4RL
 from mzutils import mkdir_p, normalize_spaces, denormalize_spaces, SimplePriorityQueue

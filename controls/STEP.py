@@ -1,6 +1,4 @@
 import numpy as np
-import os
-import sys
 
 from ipsim import *
 from ipsim.models import *

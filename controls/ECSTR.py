@@ -1,6 +1,3 @@
-import os
-import sys
-
 from ipsim import *
 from ipsim.models import ECSTR_A0_Node, ECSTR_A0
 
