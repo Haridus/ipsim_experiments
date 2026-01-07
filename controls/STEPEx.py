@@ -1,7 +1,7 @@
-import numpy as np
+import numpy as np 
 
 from ipsim import *
-from ipsim.models import *
+from ipsim.models import STEPEx, STEPExFlow
 
 import numpy as np
 import random as rnd
@@ -104,14 +104,12 @@ def run(process_model, *, controller = None, time_target=30):
 config = {"sampling_time": 0.1}
 
 def process_model_creator( dt = config.get("sampling_time", 0.1), initial_state = None ):
-        from ipsim.models import STEP
-
         def step_observer(model, state):
             F3 = state['SensorF3']['F3'] #3
             F4 = state['SensorF4']['F4'] #2
             P  = state['SensorP']['P']   #1
             
-            return np.array([F3.Comp[STEPFlow.A], F4.F, P, ])
+            return np.array([F3.Comp[STEPExFlow.A], F4.F, P, ])
         observer = step_observer
 
         def step_manipulator(model, action):
@@ -123,7 +121,7 @@ def process_model_creator( dt = config.get("sampling_time", 0.1), initial_state 
         manipulator = step_manipulator
 
         solver = lambda f, ts, x, u, p: solve_ivp(f, ts, x, args = (u, p, ), method='LSODA')
-        process =  STEP(solver=solver, observer=observer, manipulator=manipulator, dt=0.1)
+        process =  STEPEx(solver=solver, observer=observer, manipulator=manipulator, dt=0.1)
         return process
 
 if __name__ == "__main__":
@@ -133,14 +131,6 @@ if __name__ == "__main__":
     print(step.step())
 
     multiloop_control = None
-    #F_4 = 100, P= 2700, yA3 = 0.47
-    #multiloop_control = STEPMultiloopPControl(F4_setpoint=99.99991893665879, P_setpoint=2700.1477279941, cA3_setpoint=0.4699865552748352, dt=step.dt())
-    
-    random_action = [rnd.randrange(1,100)/100.0, rnd.randrange(1,100)/100.0, rnd.randrange(1,100)/100.0]
-    step.step(action=random_action)
-    print(random_action)
-
-    #F_4 = 130, P= 2850, yA3 = 0.63
     multiloop_control = STEPMultiloopPControl(F4_setpoint=130.00, P_setpoint=2850.0, cA3_setpoint=0.63, dt=step.dt(), process=step)
     data, metadata = run(step, controller=multiloop_control, time_target=30)
     show(data, metadata=metadata)
